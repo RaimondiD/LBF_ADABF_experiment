@@ -35,14 +35,6 @@ c_min = results.c_min
 c_max = results.c_max
 
 
-# DATA_PATH = './URL_data.csv'
-# num_group_min = 8
-# num_group_max = 12
-# R_sum = 200000
-# c_min = 1.8
-# c_max = 2.1
-
-
 '''
 Load the data and select training data
 '''
@@ -111,15 +103,15 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
             thresholds = thresholds[-(num_group_1 + 1):]
 
             ### Count the keys of each group
-            url = positive_sample['url']
+            query = positive_sample['query']
             score = positive_sample['score']
 
             count_key = np.zeros(num_group_1)
-            url_group = []
+            query_group = []
             bloom_filter = []
             for j in range(num_group_1):
                 count_key[j] = sum((score >= thresholds[j]) & (score < thresholds[j + 1]))
-                url_group.append(url[(score >= thresholds[j]) & (score < thresholds[j + 1])])
+                query_group.append(query[(score >= thresholds[j]) & (score < thresholds[j + 1])])
 
             ### Search the Bloom filters' size
             R = np.zeros(num_group_1 - 1)
@@ -144,19 +136,19 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
                     Bloom_Filters.append([0])
                 else:
                     Bloom_Filters.append(BloomFilter(count_key[j], R[j]))
-                    Bloom_Filters[j].insert(url_group[j])
+                    Bloom_Filters[j].insert(query_group[j])
 
-            ### Test URLs
-            ML_positive = train_negative.loc[(train_negative['score'] >= thresholds[-2]), 'url']
-            url_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'url']
+            ### Test querys
+            ML_positive = train_negative.loc[(train_negative['score'] >= thresholds[-2]), 'query']
+            query_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'query']
             score_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'score']
 
-            test_result = np.zeros(len(url_negative))
+            test_result = np.zeros(len(query_negative))
             ss = 0
-            for score_s, url_s in zip(score_negative, url_negative):
+            for score_s, query_s in zip(score_negative, query_negative):
                 ix = min(np.where(score_s < thresholds)[0]) - 1
                 if ix >= non_empty_ix:
-                    test_result[ss] = Bloom_Filters[ix].test(url_s)
+                    test_result[ss] = Bloom_Filters[ix].test(query_s)
                 else:
                     test_result[ss] = 0
                 ss += 1
@@ -180,19 +172,19 @@ if __name__ == '__main__':
     Bloom_Filters_opt, thresholds_opt, non_empty_ix_opt = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
 
     '''Stage 2: Run Ada-BF on all the samples'''
-    ### Test URLs
-    ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'url']
-    url_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'url']
+    ### Test queries
+    ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'query']
+    query_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'query']
     score_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'score']
-    test_result = np.zeros(len(url_negative))
+    test_result = np.zeros(len(query_negative))
     ss = 0
-    for score_s, url_s in zip(score_negative, url_negative):
+    for score_s, query_s in zip(score_negative, query_negative):
         ix = min(np.where(score_s < thresholds_opt)[0]) - 1
         if ix >= non_empty_ix_opt:
-            test_result[ss] = Bloom_Filters_opt[ix].test(url_s)
+            test_result[ss] = Bloom_Filters_opt[ix].test(query_s)
         else:
             test_result[ss] = 0
         ss += 1
     FP_items = sum(test_result) + len(ML_positive)
-    FPR = FP_items/len(url_negative)
-    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(url_negative)))
+    FPR = FP_items/len(query_negative)
+    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(query_negative)))
