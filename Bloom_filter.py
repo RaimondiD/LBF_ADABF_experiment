@@ -76,8 +76,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
                         help="path of the dataset")
-    parser.add_argument('--size_of_Ada_BF', action="store", dest="R_sum", type=int, required=True,
-                        help="size of the Ada-BF")
+    parser.add_argument('--size_of_BF', action="store", dest="R_sum", type=int, required=True,
+                        help="size of the BF")
 
     results = parser.parse_args()
     DATA_PATH = results.data_path
