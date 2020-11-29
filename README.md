@@ -9,8 +9,8 @@ The python files include the implementation of the Bloom filter, learned Bloom f
 ); `--c_min` and `--c_max` provide the range of *c* where *c=m_j/m_{j+1}*
 
 **Commands**:
-- Run Bloom filter: `python Bloom_filter.py --data_path ./Datasets/URL_data.csv --size_of_Ada_BF 200000`
-- Run learned Bloom filter: `python learned_Bloom_filter.py --data_path ./Datasets/URL_data.csv --size_of_Ada_BF 200000  --threshold_min 0.5   --threshold_max 0.95`
+- Run Bloom filter: `python Bloom_filter.py --data_path ./Datasets/URL_data.csv --size_of_BF 200000`
+- Run learned Bloom filter: `python learned_Bloom_filter.py --data_path ./Datasets/URL_data.csv --size_of_LBF 200000  --threshold_min 0.5   --threshold_max 0.95`
 - Run Ada-BF: `python Ada-BF.py --data_path ./Datasets/URL_data.csv --size_of_Ada_BF 200000  --num_group_min 8  --num_group_max 12  --c_min 1.6  --c_max 2.5`
 - Run disjoint Ada-BF: `python disjoint_Ada-BF.py --data_path ./Datasets/URL_data.csv --size_of_Ada_BF 200000  --num_group_min 8  --num_group_max 12  --c_min 1.6  --c_max 2.5`
 
