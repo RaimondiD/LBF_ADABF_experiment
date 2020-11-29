@@ -11,7 +11,7 @@ parser.add_argument('--threshold_min', action="store", dest="min_thres", type=fl
                     help="Minimum threshold for positive samples")
 parser.add_argument('--threshold_max', action="store", dest="max_thres", type=float, required=True,
                     help="Maximum threshold for positive samples")
-parser.add_argument('--size_of_Ada_BF', action="store", dest="R_sum", type=int, required=True,
+parser.add_argument('--size_of_LBF', action="store", dest="R_sum", type=int, required=True,
                     help="size of the Ada-BF")
 
 
