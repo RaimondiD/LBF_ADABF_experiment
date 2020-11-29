@@ -31,14 +31,6 @@ c_min = results.c_min
 c_max = results.c_max
 
 
-# DATA_PATH = './URL_data.csv'
-# num_group_min = 8
-# num_group_max = 12
-# R_sum = 200000
-# c_min = 1.8
-# c_max = 2.1
-
-
 '''
 Load the data and select training data
 '''
@@ -119,24 +111,24 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
                 if int(num_piece * c ** i) < len(score_1):
                     thresholds[-(i + 2)] = score_1[-int(num_piece * c ** i)]
 
-            url = positive_sample['url']
+            query = positive_sample['query']
             score = positive_sample['score']
 
-            for score_s, url_s in zip(score, url):
+            for score_s, query_s in zip(score, query):
                 ix = min(np.where(score_s < thresholds)[0])
                 k = k_max - ix
-                bloom_filter.insert(url_s, k)
-            ML_positive = train_negative.loc[(train_negative['score'] >= thresholds[-2]), 'url']
-            url_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'url']
+                bloom_filter.insert(query_s, k)
+            ML_positive = train_negative.loc[(train_negative['score'] >= thresholds[-2]), 'query']
+            query_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'query']
             score_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'score']
 
-            test_result = np.zeros(len(url_negative))
+            test_result = np.zeros(len(query_negative))
             ss = 0
-            for score_s, url_s in zip(score_negative, url_negative):
+            for score_s, query_s in zip(score_negative, query_negative):
                 ix = min(np.where(score_s < thresholds)[0])
                 # thres = thresholds[ix]
                 k = k_max - ix
-                test_result[ss] = bloom_filter.test(url_s, k)
+                test_result[ss] = bloom_filter.test(query_s, k)
                 ss += 1
             FP_items = sum(test_result) + len(ML_positive)
             print('False positive items: %d, Number of groups: %d, c = %f' %(FP_items, k_max, round(c, 2)))
@@ -159,18 +151,20 @@ if __name__ == '__main__':
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thresholds_opt, k_max_opt = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
 
+    
     '''Stage 2: Run Ada-BF on all the samples'''
-    ### Test URLs
-    ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'url']
-    url_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'url']
+    ### Test Queries
+    ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'query']
+    query_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'query']
     score_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'score']
-    test_result = np.zeros(len(url_negative))
+    test_result = np.zeros(len(query_negative))
     ss = 0
-    for score_s, url_s in zip(score_negative, url_negative):
+    for score_s, query_s in zip(score_negative, query_negative):
         ix = min(np.where(score_s < thresholds_opt)[0])
         # thres = thresholds[ix]
         k = k_max_opt - ix
-        test_result[ss] = bloom_filter_opt.test(url_s, k)
+        test_result[ss] = bloom_filter_opt.test(query_s, k)
         ss += 1
     FP_items = sum(test_result) + len(ML_positive)
-    print('False positive items: %d' % FP_items)
+    FPR = FP_items/len(query_negative)
+    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(query_negative)))
