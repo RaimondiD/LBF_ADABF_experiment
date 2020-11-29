@@ -20,6 +20,8 @@ class BloomFilter():
     def __init__(self, n, hash_len):
         self.n = n
         self.hash_len = int(hash_len)
+        if (self.hash_len == 0):
+            raise SyntaxError('The hash table is empty')
         if (self.n > 0) & (self.hash_len > 0):
             self.k = max(1,int(self.hash_len/n*0.6931472))
         elif (self.n==0):
@@ -28,6 +30,7 @@ class BloomFilter():
         for i in range(self.k):
             self.h.append(hashfunc(self.hash_len))
         self.table = np.zeros(self.hash_len, dtype=int)
+        
     def insert(self, key):
         if self.hash_len == 0:
             raise SyntaxError('cannot insert to an empty hash table')
@@ -88,10 +91,10 @@ if __name__ == '__main__':
     negative_sample = data.loc[(data['label'] == -1)]
     positive_sample = data.loc[(data['label'] == 1)]
 
-    url = positive_sample['url']
-    n = len(url)
+    query = positive_sample['query']
+    n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
-    bloom_filter.insert(url)
-    url_negative = negative_sample['url']
-    n1 = bloom_filter.test(url_negative, single_key=False)
+    bloom_filter.insert(query)
+    query_negative = negative_sample['query']
+    n1 = bloom_filter.test(query_negative, single_key=False)
     print('False positive items: ', sum(n1))
