@@ -171,7 +171,7 @@ if __name__ == '__main__':
     '''Stage 1: Find the hyper-parameters'''
     Bloom_Filters_opt, thresholds_opt, non_empty_ix_opt = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
 
-    '''Stage 2: Run Ada-BF on all the samples'''
+    '''Stage 2: Run disjoint Ada-BF on all the samples'''
     ### Test queries
     ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'query']
     query_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'query']
