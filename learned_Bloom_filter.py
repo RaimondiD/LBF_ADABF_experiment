@@ -62,7 +62,7 @@ if __name__ == '__main__':
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thres_opt = Find_Optimal_Parameters(max_thres, min_thres, R_sum, train_negative, positive_sample)
 
-    '''Stage 2: Run Ada-BF on all the samples'''
+    '''Stage 2: Run LBF on all the samples'''
     ### Test queries
     ML_positive = negative_sample.loc[(negative_sample['score'] > thres_opt), 'query']
     bloom_negative = negative_sample.loc[(negative_sample['score'] <= thres_opt), 'query']
