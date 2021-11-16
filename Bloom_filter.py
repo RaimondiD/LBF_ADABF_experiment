@@ -90,11 +90,11 @@ if __name__ == '__main__':
 
     negative_sample = data.loc[(data['label'] == -1)]
     positive_sample = data.loc[(data['label'] == 1)]
-
-    query = positive_sample['query']
+    print(positive_sample)
+    query = positive_sample['url']
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
-    query_negative = negative_sample['query']
+    query_negative = negative_sample['url']
     n1 = bloom_filter.test(query_negative, single_key=False)
     print('False positive items: ', sum(n1))

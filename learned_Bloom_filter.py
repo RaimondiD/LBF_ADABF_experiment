@@ -37,12 +37,12 @@ def Find_Optimal_Parameters(max_thres, min_thres, R_sum, train_negative, positiv
     FP_opt = train_negative.shape[0]
 
     for threshold in np.arange(min_thres, max_thres+10**(-6), 0.01):
-        query = positive_sample.loc[(positive_sample['score'] <= threshold),'query']
+        query = positive_sample.loc[(positive_sample['score'] <= threshold),'url']
         n = len(query)
         bloom_filter = BloomFilter(n, R_sum)
         bloom_filter.insert(query)
-        ML_positive = train_negative.loc[(train_negative['score'] > threshold),'query']
-        bloom_negative = train_negative.loc[(train_negative['score'] <= threshold),'query']
+        ML_positive = train_negative.loc[(train_negative['score'] > threshold),'url']
+        bloom_negative = train_negative.loc[(train_negative['score'] <= threshold),'url']
         BF_positive = bloom_filter.test(bloom_negative, single_key=False)
         FP_items = sum(BF_positive) + len(ML_positive)
         print('Threshold: %f, False positive items: %d' %(round(threshold, 2), FP_items))
@@ -64,10 +64,10 @@ if __name__ == '__main__':
 
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
-    ML_positive = negative_sample.loc[(negative_sample['score'] > thres_opt), 'query']
-    bloom_negative = negative_sample.loc[(negative_sample['score'] <= thres_opt), 'query']
+    ML_positive = negative_sample.loc[(negative_sample['score'] > thres_opt), 'url']
+    bloom_negative = negative_sample.loc[(negative_sample['score'] <= thres_opt), 'url']
     score_negative = negative_sample.loc[(negative_sample['score'] < thres_opt), 'score']
     BF_positive = bloom_filter_opt.test(bloom_negative, single_key = False)
     FP_items = sum(BF_positive) + len(ML_positive)
     FPR = FP_items/len(negative_sample)
-    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(negative_sample)))
+    print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
