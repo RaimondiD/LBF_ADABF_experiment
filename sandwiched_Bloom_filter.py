@@ -18,7 +18,7 @@ results = parser.parse_args()
 DATA_PATH = results.data_path
 min_thres = results.min_thres
 max_thres = results.max_thres
-R_sum = results.R_sum
+R_sum = results.b
 
 '''
 Load the data and select training data
@@ -42,7 +42,7 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
     if b < 1: 
         print("err")
         return 
-
+    # FP e FN  posso calcolarli così perché ho assunzione che le train negative sia distribuito come l'insieme delle chiavi, ma se non è così?
     FP_opt = train_negative.shape[0]
     for threshold in np.arange(min_thres, max_thres+10**(-6), 0.01):
         FP = (train_negative['url'][(train_negative['score'] > threshold)].size) / train_negative['url'].size
