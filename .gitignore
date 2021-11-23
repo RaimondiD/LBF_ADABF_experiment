@@ -1,4 +1,8 @@
 Datasets/URL_data_features_all.csv
 __pycache__/
+<<<<<<< HEAD
 Score_Dist.png
 test/
+=======
+Score_Dist.png
+>>>>>>> e444f9921a57f05a2e775dcc66a87e00f50e37c9

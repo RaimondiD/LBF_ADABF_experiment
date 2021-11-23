@@ -103,7 +103,7 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
             thresholds = thresholds[-(num_group_1 + 1):]
 
             ### Count the keys of each group
-            query = positive_sample['query']
+            query = positive_sample['url']
             score = positive_sample['score']
 
             count_key = np.zeros(num_group_1)
@@ -139,8 +139,8 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
                     Bloom_Filters[j].insert(query_group[j])
 
             ### Test querys
-            ML_positive = train_negative.loc[(train_negative['score'] >= thresholds[-2]), 'query']
-            query_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'query']
+            ML_positive = train_negative.loc[(train_negative['score'] >= thresholds[-2]), 'url']
+            query_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'url']
             score_negative = train_negative.loc[(train_negative['score'] < thresholds[-2]), 'score']
 
             test_result = np.zeros(len(query_negative))
@@ -173,8 +173,8 @@ if __name__ == '__main__':
 
     '''Stage 2: Run disjoint Ada-BF on all the samples'''
     ### Test queries
-    ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'query']
-    query_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'query']
+    ML_positive = negative_sample.loc[(negative_sample['score'] >= thresholds_opt[-2]), 'url']
+    query_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'url']
     score_negative = negative_sample.loc[(negative_sample['score'] < thresholds_opt[-2]), 'score']
     test_result = np.zeros(len(query_negative))
     ss = 0
