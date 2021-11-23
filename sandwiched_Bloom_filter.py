@@ -45,7 +45,6 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
 
     FP_opt = train_negative.shape[0]
     for threshold in np.arange(min_thres, max_thres+10**(-6), 0.01):
-        # FP e FN  posso calcolarli così perché ho assunzione che le train negative sia distribuito come l'insieme delle chiavi, ma se non è così?
         FP = (train_negative['url'][(train_negative['score'] > threshold)].size) / train_negative['url'].size
         FN = (positive_sample['url'][(positive_sample['score'] <= threshold)].size) / positive_sample['url'].size
         b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
