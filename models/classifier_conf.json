@@ -1,2 +1,3 @@
 {"SVM" : {"C" : 1 },
-  "RF" : {"N_tree" : 10, "max_leaf" : 20} }
+  "RF" : {"N_tree" : 10, "max_leaf" : 20},
+  "FFNN": {"hidden_layer_size ": 20}}
