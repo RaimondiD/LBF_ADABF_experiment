@@ -10,7 +10,6 @@ from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 import serialize
 config_path = "models/classifier_conf.json"
-config_path_train = "models/train_conf.json"
 path_classifier = "models/"
 path_score = "score_classifier/"
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
@@ -22,12 +21,10 @@ classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni 
 
 def train_classifier(X_train, y_train, url, feature_vector,y, args):
     model_list, path_score_list, path_model_list = get_classifiers(args)
-    for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list): 
-        with open(config_path_train, "r") as f:
-            train_parameters = json.load() 
-            model.fit(X_train, y_train)
-            serialize.save_score(model, feature_vector, y, url, path_score)
-            serialize.save_model(model,path_model)
+    for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
+        model.fit(X_train, y_train)
+        serialize.save_score(model, feature_vector, y, url, path_score)
+        serialize.save_model(model,path_model)
 
 
         
@@ -39,7 +36,7 @@ def get_classifiers(args):
         data = json.load(file)
         cl_list = args.classifier_list
         cl_dict = {key : data[key] for key in cl_list}
-        data_info = args.dataset_path.split("_")[0].split("/")[1]
+        data_info = args.dataset_path.split("_")[0].split("\\")[1]
     return get_name_and_classifier(cl_dict, data_info)
 
 def get_name_and_classifier(cl_dict, data_info):
@@ -92,7 +89,7 @@ class MultiLayerPerceptron(tf.keras.Model):
 
         grads = tape.gradient(loss, self.trainable_weights) # dloss_dweights
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights)) # aggiornamento pesi
-        self.compiled_metrics.update_state(y, y_hat) # aggionamento metriche
+        self.compiled_metrics.update_state(y, y_hat) # aggiornamento metriche
 
         return {m.name: m.result() for m in self.metrics}
 
@@ -115,8 +112,7 @@ def get_bloom_dataset(args):
     dataset = serialize.load_dataset(args.dataset_path)
     features = [el for el in dataset.columns if el!= 'url' and el != 'score']
     X = dataset[features].iloc[:,1:-1].to_numpy()
-    y = dataset[features].iloc[:,-1].to_numpy()
-    y = pd.Series([0 if i == - 1 else i for i in y]) # Per binary loss, da togliere se da problemi
+    y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() # .replace(-1, 0) per binary loss
     url = dataset['url']
     X_train, _ ,y_train ,_ = train_test_split(X,y,train_size= 0.3)
     return (X_train, y_train, url, X,y)
