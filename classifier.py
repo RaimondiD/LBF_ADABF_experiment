@@ -1,5 +1,6 @@
 from os import path
 import pandas as pd
+import tensorflow as tf
 import json
 from numpy import ndarray
 import argparse
@@ -12,7 +13,8 @@ config_path = "models/classifier_conf.json"
 path_classifier = "models/"
 path_score = "score_classifier/"
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
-                   "RF" : lambda: My_Random_Forest}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
+                   "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
+                   "FFNN": lambda: MultiLayerPerceptron}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                                                
     
 class My_Random_Forest(RandomForestClassifier):
@@ -86,6 +88,38 @@ def get_name_and_classifier(cl_dict, data_info):
 
 
 
+class MultiLayerPerceptron(tf.keras.Model):
+    def __init__(self, **kwargs):
+        super(MultiLayerPerceptron, self).__init__()
+        self.dense1 = tf.keras.layers.Dense(kwargs.get('hidden_layers_size', 20), activation = tf.nn.relu)
+        self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
+
+        self.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = tf.losses.BinaryCrossentropy())
+
+    def predict_proba(self, X):
+        scores = self.predict(X)
+
+        return scores.flatten().tolist()
+
+    def train_step(self, data):
+        X, y = data # data dipende da ciò che viene passato a fit()
+
+        with tf.GradientTape() as tape:
+            y_hat = self(X, training = True)
+            loss = self.compiled_loss(y, y_hat)
+
+        grads = tape.gradient(loss, self.trainable_weights) # dloss_dweights
+        self.optimizer.apply_gradients(zip(grads, self.trainable_weights)) # aggiornamento pesi
+        self.compiled_metrics.update_state(y, y_hat) # aggiornamento metriche
+
+        return {m.name: m.result() for m in self.metrics}
+
+    def call(self, inputs):
+        out_dense_1 = self.dense1(inputs)
+        out_dense_2 = self.dense2(out_dense_1)
+
+        return out_dense_2
+
 def flat(lista):
     ''' nel caso la lista contenga un unico elemento torni quello. il controllo viene fatto ricorsivamente. l'idea è che se ho
     [[[4,3]]] voglio ritornare [4,3]. Se ho [2] voglio tornare 2.'''
@@ -99,7 +133,7 @@ def get_bloom_dataset(data_path):
     dataset = serialize.load_dataset(data_path)
     features = [el for el in dataset.columns if el!= 'url' and el != 'score']
     X = dataset[features].iloc[:,1:-1].to_numpy()
-    y = dataset[features].iloc[:,-1].to_numpy()
+    y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() # .replace(-1, 0) per binary loss
     url = dataset['url']
     X_train, _ ,y_train ,_ = train_test_split(X,y,train_size= 0.3, random_state=42)
     return (X_train, y_train, url, X,y)

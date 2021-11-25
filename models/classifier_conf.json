@@ -1,2 +1,4 @@
 {"SVM" : {"C" : 1 },
-  "RF" : {"n_estimators" : 10, "max_leaf_nodes" : 20} }
+  "RF" : {"n_estimators" : 10, "max_leaf_nodes" : 20},
+  "FFNN": {"hidden_layer_size ": 20}
+}
