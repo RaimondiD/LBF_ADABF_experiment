@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import size
 import pandas as pd
 import pickle 
 import os
@@ -14,13 +15,15 @@ def save_model(model, save_path):
     size = os.path.getsize(save_path)
     return size
 
-def save_score(model, X_test, url, save_path):
+def save_score(model, X_test,y, url, save_path):
     '''salva i punteggi in un file csv, in modo da poterli poi utilizzare per la creazione di filtri'''         
-    score = model.get_probs(X_test)
-    save_score(save_path, score, url)
-    d = {'url' : url, 'score' : score}
+    score = model.predict_proba(X_test)
+    print(len(url), len(score), size(score))
+    d = {'url' : url, 'label' : y, 'score' : score}
+    print(size(score))
     save_object = pd.DataFrame(d)
-    save_object.to_csv(save_path)
+    print(save_object)
+    save_object.to_csv(save_path+".csv")
         
 
 
