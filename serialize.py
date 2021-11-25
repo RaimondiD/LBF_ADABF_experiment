@@ -18,12 +18,13 @@ def save_model(model, save_path):
 def save_score(model, X_test,y, url, save_path):
     '''salva i punteggi in un file csv, in modo da poterli poi utilizzare per la creazione di filtri'''         
     score = model.predict_proba(X_test)
-    print(len(url), len(score), size(score))
     d = {'url' : url, 'label' : y, 'score' : score}
-    print(size(score))
     save_object = pd.DataFrame(d)
-    print(save_object)
     save_object.to_csv(save_path+".csv")
         
 
+def get_data_name(data_path):
+    return data_path.split("_")[0].split("/")[1]
 
+def get_path(dir_path, data_name, classifier):
+    return dir_path + data_name + "/"  + classifier 

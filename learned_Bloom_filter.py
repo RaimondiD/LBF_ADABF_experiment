@@ -31,12 +31,8 @@ def Find_Optimal_Parameters(max_thres, min_thres, R_sum, train_negative, positiv
 
 
 
-'''
-Implement learned Bloom filter
-'''
 
-
-def main(data_path,other):
+def main(data_path, size_filter, other):
     parser = argparse.ArgumentParser()
     
     
@@ -45,14 +41,13 @@ def main(data_path,other):
                     help="Minimum threshold for positive samples")
     parser.add_argument('--threshold_max', action="store", dest="max_thres", type=float, required=True,
                     help="Maximum threshold for positive samples")
-    parser.add_argument('--size_of_LBF', action="store", dest="R_sum", type=int, required=True,
-                    help="size of the LBF")
+    
 
     results = parser.parse_args(other)
     DATA_PATH = data_path
     min_thres = results.min_thres
     max_thres = results.max_thres
-    R_sum = results.R_sum
+    R_sum = size_filter
 
     '''
     Load the data and select training data
@@ -74,13 +69,14 @@ def main(data_path,other):
     BF_positive = bloom_filter_opt.test(bloom_negative, single_key = False)
     FP_items = sum(BF_positive) + len(ML_positive)
     FPR = FP_items/len(negative_sample)
-    print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
+    #print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
+    return FP_items,FPR, len(negative_sample)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
                     help="path of the dataset")
-    result =parser.parse_known_args()
+    result =parser.parse_known_args() 
     print(result[0])
     main(result[0].data_path,result[1])
 
