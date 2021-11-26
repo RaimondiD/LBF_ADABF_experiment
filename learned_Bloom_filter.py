@@ -53,7 +53,7 @@ def main(data_path, size_filter, other):
     Load the data and select training data
     '''
     data = pd.read_csv(DATA_PATH)
-    negative_sample = data.loc[(data['label']==-1)]
+    negative_sample = data.loc[(data['label']==0)]
     positive_sample = data.loc[(data['label']==1)]
     train_negative = negative_sample.sample(frac = 0.3)
 

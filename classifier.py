@@ -42,7 +42,7 @@ class My_SVM(LinearSVC):
             probs.append(expit(somma)) 
             somma = 0
         return probs
-        
+
 class MultiLayerPerceptron(tf.keras.Model):
     def __init__(self, **kwargs):
         super(MultiLayerPerceptron, self).__init__()
@@ -97,9 +97,9 @@ def integrate_train(data_path, classifier_list, force_train):  #metodo per capir
         train_list = []
         for cl in classifier_list:
             path_s = serialize.get_path(path_score, serialize.get_data_name(data_path), cl) + ".csv" #ricava il path a cui dovrebbero essere salvati gli score, nel caso siano stati calcolati
-            path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1"
+            #path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1"
             try:
-                open(path_s) and open(path_m)
+                open(path_s) #and open(path_m)
             except:
                 train_list.append(cl)
         if(len(train_list)):
@@ -112,7 +112,9 @@ def train_classifier(X_train, y_train, url, feature_vector,y, classifier_list, d
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
         serialize.save_score(model, feature_vector, y, url, path_score)
-        serialize.save_model(model,path_model)
+        try:
+            serialize.save_model(model,path_model)
+        except: pass
 
 
         

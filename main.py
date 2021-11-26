@@ -1,13 +1,14 @@
 from pandas.core.frame import DataFrame
 import learned_Bloom_filter
 import sandwiched_Bloom_filter
-#import Ada_BF
+import Ada_BF
 import argparse
 import classifier
 import serialize
 path_score = classifier.path_score
 dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
-            "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main} 
+            "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main,
+            "Ada-BF" : lambda : Ada_BF.main} 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
