@@ -46,10 +46,25 @@ class My_SVM(LinearSVC):
 class MultiLayerPerceptron(tf.keras.Model):
     def __init__(self, **kwargs):
         super(MultiLayerPerceptron, self).__init__()
-        self.dense1 = tf.keras.layers.Dense(kwargs.get('hidden_layers_size', 20), activation = tf.nn.relu)
+        # Parametri da conf
+        self.epochs = kwargs.get('epochs', 5)
+        self.learning_rate =  kwargs.get('learning_rate', 1e-3)
+        self.hidden_layer_size = kwargs.get('hidden_layers_size', 20)
+        # Struttura della rete
+        self.dense1 = tf.keras.layers.Dense(self.hidden_layer_size, activation = tf.nn.relu)
         self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
+        # Compile
+        self.compile(
+            optimizer = tf.optimizers.Adam(self.learning_rate), 
+            loss = "binary_crossentropy",
+            metrics = [
+                tf.keras.metrics.Precision(), 
+                tf.keras.metrics.Recall(),
+                ]
+        )
 
-        self.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = tf.losses.BinaryCrossentropy())
+    def fit(self, x, y):
+        super(MultiLayerPerceptron, self).fit(x, y, epochs = self.epochs)
 
     def predict_proba(self, X):
         scores = self.predict(X)
