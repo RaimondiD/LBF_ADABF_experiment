@@ -6,54 +6,6 @@ from Bloom_filter import hashfunc
 
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
-                    help="path of the dataset")
-parser.add_argument('--num_group_min', action="store", dest="min_group", type=int, required=True,
-                    help="Minimum number of groups")
-parser.add_argument('--num_group_max', action="store", dest="max_group", type=int, required=True,
-                    help="Maximum number of groups")
-parser.add_argument('--size_of_Ada_BF', action="store", dest="R_sum", type=int, required=True,
-                    help="size of the Ada-BF")
-parser.add_argument('--c_min', action="store", dest="c_min", type=float, required=True,
-                    help="minimum ratio of the keys")
-parser.add_argument('--c_max', action="store", dest="c_max", type=float, required=True,
-                    help="maximum ratio of the keys")
-
-
-
-results = parser.parse_args()
-DATA_PATH = results.data_path
-num_group_min = results.min_group
-num_group_max = results.max_group
-R_sum = results.R_sum
-c_min = results.c_min
-c_max = results.c_max
-
-
-'''
-Load the data and select training data
-'''
-data = pd.read_csv(DATA_PATH)
-negative_sample = data.loc[(data['label']==-1)]
-positive_sample = data.loc[(data['label']==1)]
-train_negative = negative_sample.sample(frac = 0.3)
-
-
-
-'''
-Plot the distribution of scores
-'''
-plt.style.use('seaborn-deep')
-
-x = data.loc[data['label']==1,'score']
-y = data.loc[data['label']==-1,'score']
-bins = np.linspace(0, 1, 25)
-
-plt.hist([x, y], bins, log=True, label=['Keys', 'non-Keys'])
-plt.legend(loc='upper right')
-plt.savefig('./Score_Dist.png')
-plt.show()
 
 
 class Ada_BloomFilter():
@@ -147,7 +99,51 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
 '''
 Implement Ada-BF
 '''
-if __name__ == '__main__':
+def main(DATA_PATH, R_sum, others):
+        
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num_group_min', action="store", dest="min_group", type=int, required=True,
+                        help="Minimum number of groups")
+    parser.add_argument('--num_group_max', action="store", dest="max_group", type=int, required=True,
+                        help="Maximum number of groups")
+
+    parser.add_argument('--c_min', action="store", dest="c_min", type=float, required=True,
+                        help="minimum ratio of the keys")
+    parser.add_argument('--c_max', action="store", dest="c_max", type=float, required=True,
+                        help="maximum ratio of the keys")
+
+
+
+    results = parser.parse_args(others)
+    num_group_min = results.min_group
+    num_group_max = results.max_group
+    c_min = results.c_min
+    c_max = results.c_max
+
+
+    '''
+    Load the data and select training data
+    '''
+    data = pd.read_csv(DATA_PATH)
+    negative_sample = data.loc[(data['label']==-1)]
+    positive_sample = data.loc[(data['label']==1)]
+    train_negative = negative_sample.sample(frac = 0.3)
+
+
+
+    '''
+    Plot the distribution of scores
+    '''
+    plt.style.use('seaborn-deep')
+
+    x = data.loc[data['label']==1,'score']
+    y = data.loc[data['label']==-1,'score']
+    bins = np.linspace(0, 1, 25)
+
+    plt.hist([x, y], bins, log=True, label=['Keys', 'non-Keys'])
+    plt.legend(loc='upper right')
+    plt.savefig('./Score_Dist.png')
+    plt.show()
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thresholds_opt, k_max_opt = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
 
@@ -168,3 +164,14 @@ if __name__ == '__main__':
     FP_items = sum(test_result) + len(ML_positive)
     FPR = FP_items/len(negative_sample['url'])
     print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(negative_sample['url'])))
+    return FP_items, FPR, len(negative_sample)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
+                    help="path of the dataset")
+    parser.add_argument('--size_of_Ada_BF', action="store", dest="R_sum", type=int, required=True,
+                    help="size of the Ada-BF")
+    result =parser.parse_known_args() 
+    main(result[0].data_path, result[0].R_sum, result[1])
+

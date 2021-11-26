@@ -4,29 +4,6 @@ import argparse
 import math
 from Bloom_filter import BloomFilter
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
-                    help="path of the dataset")
-parser.add_argument('--threshold_min', action="store", dest="min_thres", type=float, required=True,
-                    help="Minimum threshold for positive samples")
-parser.add_argument('--threshold_max', action="store", dest="max_thres", type=float, required=True,
-                    help="Maximum threshold for positive samples")
-parser.add_argument('--bits_per_key', action="store", dest="b", type=float, required=True,
-                    help="bits per key")
-
-results = parser.parse_args()
-DATA_PATH = results.data_path
-min_thres = results.min_thres
-max_thres = results.max_thres
-R_sum = results.b
-
-'''
-Load the data and select training data
-'''
-data = pd.read_csv(DATA_PATH)
-negative_sample = data.loc[(data['label']==-1)]
-positive_sample = data.loc[(data['label']==1)]
-train_negative = negative_sample.sample(frac = 0.3)
 
 def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sample):
     '''
@@ -76,11 +53,31 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
             optimal_B2 = B2
 
     return optimal_B1, optimal_B2, optimal_threshold
+def main(DATA_PATH,R_sum,others):
+    parser = argparse.ArgumentParser()
 
-if __name__ == '__main__':
+    parser.add_argument('--threshold_min', action="store", dest="min_thres", type=float, required=True,
+                        help="Minimum threshold for positive samples")
+    parser.add_argument('--threshold_max', action="store", dest="max_thres", type=float, required=True,
+                        help="Maximum threshold for positive samples")
+    
+
+    results = parser.parse_args(others)
+    min_thres = results.min_thres
+    max_thres = results.max_thres
+
+    '''
+    Load the data and select training data
+    '''
+    data = pd.read_csv(DATA_PATH)
+    negative_sample = data.loc[(data['label']==-1)]
+    positive_sample = data.loc[(data['label']==1)]
+    train_negative = negative_sample.sample(frac = 0.3)
+
+    b = R_sum / len(positive_sample)
     print(len(positive_sample))
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(max_thres, min_thres, R_sum, train_negative, positive_sample)
+    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sample)
 
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
@@ -91,4 +88,16 @@ if __name__ == '__main__':
     FP_items = sum(BF_positive) + len(FP_ML)
     FPR = FP_items/len(negative_sample)
     print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
+    return FP_items, FPR, len(negative_sample)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
+                    help="path of the dataset")
+    parser.add_argument('--size_of_Sandwiched', action="store", dest="R_sum", type=int, required=True,
+                    help="size of the Ada-BF")
+    result =parser.parse_known_args() 
+    main(result[0].data_path, result[0].R_sum, result[1])
+
 

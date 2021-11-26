@@ -1,4 +1,5 @@
 from os import path
+import os
 import pandas as pd
 import tensorflow as tf
 import json
@@ -41,6 +42,38 @@ class My_SVM(LinearSVC):
             probs.append(expit(somma)) 
             somma = 0
         return probs
+        
+class MultiLayerPerceptron(tf.keras.Model):
+    def __init__(self, **kwargs):
+        super(MultiLayerPerceptron, self).__init__()
+        self.dense1 = tf.keras.layers.Dense(kwargs.get('hidden_layers_size', 20), activation = tf.nn.relu)
+        self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
+
+        self.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = tf.losses.BinaryCrossentropy())
+
+    def predict_proba(self, X):
+        scores = self.predict(X)
+
+        return scores.flatten().tolist()
+
+    def train_step(self, data):
+        X, y = data # data dipende da ciò che viene passato a fit()
+
+        with tf.GradientTape() as tape:
+            y_hat = self(X, training = True)
+            loss = self.compiled_loss(y, y_hat)
+
+        grads = tape.gradient(loss, self.trainable_weights) # dloss_dweights
+        self.optimizer.apply_gradients(zip(grads, self.trainable_weights)) # aggiornamento pesi
+        self.compiled_metrics.update_state(y, y_hat) # aggiornamento metriche
+
+        return {m.name: m.result() for m in self.metrics}
+
+    def call(self, inputs):
+        out_dense_1 = self.dense1(inputs)
+        out_dense_2 = self.dense2(out_dense_1)
+
+        return out_dense_2
 
 def integrate_train(data_path, classifier_list, force_train):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     if (force_train):
@@ -76,7 +109,7 @@ def get_classifiers(classifier_list, data_path):
         data = json.load(file)
         cl_list = classifier_list
         cl_dict = {key : data[key] for key in cl_list}
-        data_info = data_path.split("_")[0].split("/")[1]
+        data_info = os.path.split(data_path.split("_")[0])[1]
     return get_name_and_classifier(cl_dict, data_info)
 
 def get_name_and_classifier(cl_dict, data_info):
@@ -88,37 +121,6 @@ def get_name_and_classifier(cl_dict, data_info):
 
 
 
-class MultiLayerPerceptron(tf.keras.Model):
-    def __init__(self, **kwargs):
-        super(MultiLayerPerceptron, self).__init__()
-        self.dense1 = tf.keras.layers.Dense(kwargs.get('hidden_layers_size', 20), activation = tf.nn.relu)
-        self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
-
-        self.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = tf.losses.BinaryCrossentropy())
-
-    def predict_proba(self, X):
-        scores = self.predict(X)
-
-        return scores.flatten().tolist()
-
-    def train_step(self, data):
-        X, y = data # data dipende da ciò che viene passato a fit()
-
-        with tf.GradientTape() as tape:
-            y_hat = self(X, training = True)
-            loss = self.compiled_loss(y, y_hat)
-
-        grads = tape.gradient(loss, self.trainable_weights) # dloss_dweights
-        self.optimizer.apply_gradients(zip(grads, self.trainable_weights)) # aggiornamento pesi
-        self.compiled_metrics.update_state(y, y_hat) # aggiornamento metriche
-
-        return {m.name: m.result() for m in self.metrics}
-
-    def call(self, inputs):
-        out_dense_1 = self.dense1(inputs)
-        out_dense_2 = self.dense2(out_dense_1)
-
-        return out_dense_2
 
 def flat(lista):
     ''' nel caso la lista contenga un unico elemento torni quello. il controllo viene fatto ricorsivamente. l'idea è che se ho
