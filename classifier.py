@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import tensorflow as tf
 import json
+import pickle
 from numpy import ndarray
 import argparse
 from sklearn.svm import LinearSVC
@@ -10,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 import serialize
+
 config_path = "models/classifier_conf.json"
 path_classifier = "models/"
 path_score = "score_classifier/"
@@ -63,6 +65,11 @@ class MultiLayerPerceptron(tf.keras.Model):
                 ]
         )
 
+    def save(self, path):
+        weights = self.get_weights()
+        with open(path, "wb") as file:
+            pickle.dump(weights, file)
+
     def fit(self, x, y):
         super(MultiLayerPerceptron, self).fit(x, y, epochs = self.epochs)
 
@@ -111,10 +118,11 @@ def train_classifier(X_train, y_train, url, feature_vector,y, classifier_list, d
     model_list, path_score_list, path_model_list = get_classifiers(classifier_list, data_path)
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
+        model.save(path_model + ".pk1")
         serialize.save_score(model, feature_vector, y, url, path_score)
-        try:
-            serialize.save_model(model,path_model)
-        except: pass
+        # try:
+            # serialize.save_model(model,path_model)
+        # except: pass
 
 
         
