@@ -120,12 +120,8 @@ def train_classifier(X_train, y_train, url, feature_vector,y, classifier_list, d
         model.fit(X_train, y_train)
         model.save(path_model + ".pk1")
         serialize.save_score(model, feature_vector, y, url, path_score)
-        # try:
-            # serialize.save_model(model,path_model)
-        # except: pass
 
 
-        
 def get_classifiers(classifier_list, data_path):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
         gli score e il path a cui vengono salvati i modelli '''

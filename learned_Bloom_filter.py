@@ -14,11 +14,12 @@ def Find_Optimal_Parameters(max_thres, min_thres, R_sum, train_negative, positiv
         bloom_filter.insert(query)
         ML_positive = train_negative.loc[(train_negative['score'] > threshold),'url']
         bloom_negative = train_negative.loc[(train_negative['score'] <= threshold),'url']
-        start = time.time()
+        # start = time.time()
         BF_positive = bloom_filter.test(bloom_negative, single_key=False)
-        stop = time.time()
+        # stop = time.time()
         FP_items = sum(BF_positive) + len(ML_positive)
-        print('Threshold: %f, False positive items: %d (%d dal modello, %d dal backup), Tempo : %f, Negativi testati: %d' %(round(threshold, 7), FP_items, len(ML_positive), sum(BF_positive), round(stop - start, 5), bloom_negative.size))
+        print('Threshold: %f, False positive items: %d' %(round(threshold, 2), FP_items))
+        # print('Threshold: %f, False positive items: %d (%d dal modello, %d dal backup), Tempo : %f, Negativi testati: %d' %(round(threshold, 7), FP_items, len(ML_positive), sum(BF_positive), round(stop - start, 5), bloom_negative.size))
         if FP_opt > FP_items:
             FP_opt = FP_items
             thres_opt = threshold
