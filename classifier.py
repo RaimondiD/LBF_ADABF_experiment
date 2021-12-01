@@ -22,15 +22,26 @@ path_classifier = "models/"
 path_score = "score_classifier/"
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
                    "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
-                   "FFNN": lambda: take_Multi_Layer}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
+                   "FFNN": lambda: MyKerasClassifier}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                                                
-def take_Multi_Layer(epochs = 5, learning_rate = 1e-3, hidden_layer_size = 20):
-    return KerasClassifier(build_fn = get_MultiLayerPerceprton, _epochs= epochs, learning_rate = learning_rate, hidden_layer_size = hidden_layer_size)
+#def take_Multi_Layer(epochs = 5, learning_rate = 1e-3, hidden_layer_size = 20):
+#    return KerasClassifier(build_fn = get_MultiLayerPerceprton, _epochs= epochs, learning_rate = learning_rate, hidden_layer_size = hidden_layer_size)
 
 
 def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layer_size = 20):
     return MultiLayerPerceptron(epochs = _epochs, learning_rate= learning_rate, hidden_layers_size= hidden_layer_size)
     
+class MyKerasClassifier(KerasClassifier):
+    def __init__(self, build_fn = get_MultiLayerPerceprton, **kwargs):
+        super().__init__(build_fn=build_fn, **kwargs)
+
+    def save_model(self,path):
+        weights = self.build_fn.get_weights()
+        with open(path, "wb") as file:
+            pickle.dump(weights, file)
+
+
+
 
 class My_Random_Forest(RandomForestClassifier):
     def __init__(self, **kwargs):
@@ -159,8 +170,10 @@ def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, 
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
-        model.save(path_model + ".pk1")
-        serialize.save_score(model, X, y, url, path_score)
+        try:
+            model.save(path_model + ".pk1")
+        except:
+            serialize.save_score(model, X, y, url, path_score)
 
 
 def get_classifiers(classifier_list, data_path):   
