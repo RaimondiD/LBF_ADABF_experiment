@@ -16,7 +16,7 @@ if __name__ == "__main__":
                     help="path of the dataset")
     parser.add_argument("--classifier_list", action = "store", dest = "classifier_list", type = str, nargs = '+', required= True, help = "list of used classifier " )
     parser.add_argument("--type_filter", action = "store", dest = "type_filter", type = str, required= True, help = "type of fitler to build ")
-    parser.add_argument("--force_train", action = "store", dest = "force_train", type = bool, default= False )
+    parser.add_argument("--force_train", action = "store_true", dest = "force_train")
     parser.add_argument('--size_of_filter', action="store", dest="size_of_filter", type=int, required=True,
                     help="size of the filter")
 
@@ -32,7 +32,9 @@ if __name__ == "__main__":
         FP_items, FPR, size_query =dizionario[type_filter]()(classifier_score_path, size_filter , other)
         structure_dict[cl] = {"false_positive items" : FP_items, "FPR" : FPR , "size query" : size_query, 
         "size_struct" : size_filter }
-    print(DataFrame(structure_dict))
+    results = DataFrame(structure_dict)
+    print(results)
+    serialize.save_results(results,type_filter)
 
 
 
@@ -40,5 +42,17 @@ if __name__ == "__main__":
     #domande:
     #   percentuale dataset?
     #   non considerata taglia classificatore
-    #   come lavoro sulla taglia (solo 1, + di una...)
+    #   come lavoro sulla taglia dei filtri (solo 1, + di una...)
     #   costruisco 1 tipologia di filtro?
+
+
+
+    #model selection: prendo parametri strutturali : n_features, n_split e blocco la taglia massima
+
+    #cose da fare:
+            #model selection -> parametri strutturali  con valutazione classificatore area sotto curva ROC (AUC) e area sotto curva precision-recall-> guardo sklearn
+            # e area sotto recall SVM (margine iperpiano) RF -> probabilità
+            #sottrazione taglia
+            #sistemo soglia
+            #sistemo save model
+            #parametri da input -> già fatto (?)

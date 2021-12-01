@@ -3,9 +3,13 @@ import pandas as pd
 import pickle 
 import os
 
+result_path = "results/"
 
 def load_dataset(path):
     return pd.read_csv(path)
+
+def save_results(dict, filter_name):
+    dict.to_csv(result_path + filter_name)
 
 def save_model(model, save_path):
     '''salva i modelli'''
@@ -18,6 +22,8 @@ def save_model(model, save_path):
 def save_score(model, X_test,y, url, save_path):
     '''salva i punteggi in un file csv, in modo da poterli poi utilizzare per la creazione di filtri'''         
     score = model.predict_proba(X_test)
+    if len(score.shape) > 1:
+        score = [el[1] for el in score]
     d = {'url' : url, 'label' : y, 'score' : score}
     save_object = pd.DataFrame(d)
     save_object.to_csv(save_path+".csv")
