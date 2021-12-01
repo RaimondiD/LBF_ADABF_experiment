@@ -5,6 +5,7 @@ import tensorflow as tf
 import json
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import roc_auc_score, average_precision_score
+import pickle
 from numpy import ndarray
 import numpy as np
 import argparse
@@ -104,6 +105,11 @@ class MultiLayerPerceptron(tf.keras.Model):
         )
     
 
+    def save(self, path):
+        weights = self.get_weights()
+        with open(path, "wb") as file:
+            pickle.dump(weights, file)
+
     def fit(self, x, y):
         print(self.epochs)
         super().fit(x, y, epochs = self.epochs)
@@ -153,10 +159,9 @@ def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, 
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
+        model.save(path_model + ".pk1")
         serialize.save_score(model, X, y, url, path_score)
-        try:
-            serialize.save_model(model,path_model)
-        except: pass
+
 
 def get_classifiers(classifier_list, data_path):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 

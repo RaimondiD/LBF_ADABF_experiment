@@ -5,7 +5,10 @@ import Ada_BF
 import argparse
 import classifier
 import serialize
+import os
+
 path_score = classifier.path_score
+path_classifier = classifier.path_classifier
 dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
             "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main,
             "Ada-BF" : lambda : Ada_BF.main} 
@@ -28,8 +31,11 @@ if __name__ == "__main__":
     classifier.integrate_train(data_path,classifier_list, args.force_train)
     structure_dict = {}
     for i,cl in enumerate(classifier_list):
-        classifier_score_path = serialize.get_path(path_score,serialize.get_data_name(data_path),cl) + ".csv"   
-        FP_items, FPR, size_query =dizionario[type_filter]()(classifier_score_path, size_filter , other)
+        classifier_score_path = serialize.get_path(path_score,serialize.get_data_name(data_path),cl) + ".csv" 
+        classifier_model_path = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1" 
+        classifier_size = os.path.getsize(classifier_model_path) * 8 # getsize restituisce dimensione in byte
+        correct_size_filter = size_filter - classifier_size
+        FP_items, FPR, size_query =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
         structure_dict[cl] = {"false_positive items" : FP_items, "FPR" : FPR , "size query" : size_query, 
         "size_struct" : size_filter }
     results = DataFrame(structure_dict)

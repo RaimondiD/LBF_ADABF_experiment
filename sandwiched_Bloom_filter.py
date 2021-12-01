@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import argparse
 import math
+import matplotlib.pyplot as plt
 from Bloom_filter import BloomFilter
 
 
@@ -20,14 +21,22 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
         print("err")
         return 
     FP_opt = train_negative.shape[0]
-    for threshold in np.arange(min_thres, max_thres+10**(-6), 0.01):
+    # Calcolo soglie da testare
+    train_dataset = pd.concat([train_negative, positive_sample])[['url', 'label', 'score']] # 30 % negativi + tutte le chiavi
+    train_dataset = train_dataset.sort_values(by = ['score'], ascending = True, ignore_index = True)
+    threshold_list = train_dataset['score'].round(6).unique()
+    print(train_dataset)
+    print(train_dataset.size, len(threshold_list))
+    for threshold in threshold_list:
         FP = (train_negative['url'][(train_negative['score'] > threshold)].size) / train_negative['url'].size
         FN = (positive_sample['url'][(positive_sample['score'] <= threshold)].size) / positive_sample['url'].size
+        if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): continue
+
         b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
         b1 = b - b2
         if b1 <= 0: # Non serve avere SLBF
             print("b1 = 0")
-            continue
+            break
         m = len(positive_sample)
         print(f"FP: {FP}, FN: {FN}, b: {b}, b1: {b1}, b2: {b2}")
         
@@ -45,7 +54,7 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
         Negative_ML = train_negative['url'][(B1FalsePositive == 1) & (train_negative['score'] <= threshold)]
         FP_B2 = B2.test(Negative_ML, single_key = False)
         FP_tot = sum(FP_B2) + len(FP_ML)
-        print('Threshold: %f, False positive items: %d' %(round(threshold, 2), FP_tot))
+        print('Threshold: %f, False positive items: %d' %(round(threshold, 3), FP_tot))
         if FP_opt > FP_tot:
             FP_opt = FP_tot
             optimal_threshold = threshold
@@ -53,6 +62,8 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
             optimal_B2 = B2
 
     return optimal_B1, optimal_B2, optimal_threshold
+
+    
 def main(DATA_PATH,R_sum,others):
     parser = argparse.ArgumentParser()
 
