@@ -153,9 +153,9 @@ def integrate_train(data_path, classifier_list, force_train):  #metodo per capir
         train_list = []
         for cl in classifier_list:
             path_s = serialize.get_path(path_score, serialize.get_data_name(data_path), cl) + ".csv" #ricava il path a cui dovrebbero essere salvati gli score, nel caso siano stati calcolati
-            #path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1"
+            path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1"
             try:
-                open(path_s) #and open(path_m)
+                open(path_s) and open(path_m)
             except:
                 train_list.append(cl)
         if(len(train_list)):
@@ -182,6 +182,8 @@ def get_classifiers(classifier_list, data_path):
 def get_path_and_classifier(cl_dict, data_info):
     ''' inizializza gli oggetti relativi ai classificatori utilizzati in '''
     train_list =  [classifier_fun[key]()(**kwargs) for key, kwargs in cl_dict.items()] 
+    serialize.try_to_solve(path_score + data_info)
+    serialize.try_to_solve(path_classifier + data_info)
     path_score_list = [serialize.get_path(path_score, data_info, key) for key in cl_dict]
     path_model_list = [serialize.get_path(path_classifier, data_info, key) for key in cl_dict]
     return train_list, path_score_list, path_model_list

@@ -13,7 +13,6 @@ def save_results(dict, filter_name):
 
 def save_model(model, save_path):
     '''salva i modelli'''
-    save_path += ".pk1"
     with open(save_path,'wb') as file:
             pickle.dump(model,file)
     size = os.path.getsize(save_path)
@@ -30,7 +29,13 @@ def save_score(model, X_test,y, url, save_path):
         
 
 def get_data_name(data_path):
-    return data_path.split("_")[0].split("/")[1]
+    return os.path.split(data_path.split("_")[0])[1]
 
 def get_path(dir_path, data_name, classifier):
     return dir_path + data_name + "/"  + classifier 
+
+def try_to_solve(path):
+    try:
+        os.mkdir(path)
+    except:
+        pass
