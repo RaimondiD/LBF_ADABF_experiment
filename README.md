@@ -3,17 +3,15 @@
 The python files include the implementation of the Bloom filter, learned Bloom filter, Ada-BF and disjoint Ada-BF, and print the size of False Positives of the corresponding algorithm.
  
 **Classifier options**:
-use \models\classifier_conf.json to set the invariant hyperparameter of the classifier. 
-Syntax : {name_classifier_1 : {name_param_1 : value, name_param2 : value...},
-name_classifier_2 : {...} ... }
+- Use \models\classifier_conf.json to set the invariant hyperparameter of the classifier. 
+Syntax :  `{name_classifier_1 : {name_param_1 : value, name_param2 : value...}, name_classifier_2 : {...} ... }`.
 
+- Use \models\params_grid_search,json to set the grid of parameters tested in Model selection.
+*Syntax*: `{name_classifier_1 : {name_param1 :Grid, name_param2 : Grid_2 ...}...}`
 
-use \models\params_grid_search,json to set the grid of parameters tested in Model selection.
-Syntax:
-{name_classifier_1 : {name_param1 :grid, name_param2 : grid_2 ...}...}
-grid:
--[start,end,"range"] ->  all the integer from start to end ([1,4,"range"] -> 1,2,3,4)
--[start,end,n_el] -> try n_el elements in the log space form 10^(start) to 10^(end) ([-3,1,5] -> 10e-3, 10e-2, 10e-1, 10e0. 10e1)
+Grid:
+ - `[start,end,"range"]` ->  all the integer from start to end ([1,4,"range"] -> 1,2,3,4)
+ - `[start,end,n_el]` -> try n_el elements in the log space form 10^(start) to 10^(end) ([-3,1,5] -> 10e-3, 10e-2, 10e-1, 10e0. 10e1)
 
  
 
