@@ -247,12 +247,14 @@ def analysis_and_train(classifier_list, data_path):
     X_train, y_train, X_test, y_test, url, X, y = get_bloom_dataset(data_path)
     models,path_score_list ,path_model_list = get_classifiers(classifier_list, data_path)
     params_list = get_params_list(classifier_list)
-    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list)
+    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list)    
+    models_to_train = []
     for el, item in best_estimators.items():
         y_score = item.predict(X_test)
         print(f"{el} roc auc score : {roc_auc_score(y_test,y_score)}")
         print(f"{el} average precision score : {average_precision_score(y_test,y_score)}")
-    train_classifiers(X_train, y_train,url, X, y, models, path_score_list, path_model_list )
+        models_to_train.append(item)
+    train_classifiers(X_train, y_train,url, X, y, models_to_train, path_score_list, path_model_list )
 
 
 if __name__ == "__main__":
