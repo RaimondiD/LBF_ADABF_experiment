@@ -2,6 +2,7 @@ from numpy.core.fromnumeric import size
 import pandas as pd
 import pickle 
 import os
+import numpy as np
 
 result_path = "results/"
 
@@ -20,7 +21,7 @@ def save_model(model, save_path):
 
 def save_score(model, X_test,y, url, save_path):
     '''salva i punteggi in un file csv, in modo da poterli poi utilizzare per la creazione di filtri'''         
-    score = model.predict_proba(X_test)
+    score = np.array(model.predict_proba(X_test))
     if len(score.shape) > 1:
         score = [el[1] for el in score]
     d = {'url' : url, 'label' : y, 'score' : score}
