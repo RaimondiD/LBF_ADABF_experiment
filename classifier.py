@@ -236,7 +236,7 @@ def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
 
 def get_bloom_dataset(data_path):
     dataset = serialize.load_dataset(data_path)
-    features = [el for el in dataset.columns if el!= 'url' and el != 'score']
+    features = [el for el in dataset.columns if el!= 'url']
     X = dataset[features].iloc[:,1:-1].to_numpy()
     y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() # .replace(-1, 0) per binary loss
     url = dataset['url']

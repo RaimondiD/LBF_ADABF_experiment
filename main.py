@@ -30,17 +30,23 @@ if __name__ == "__main__":
     size_filter = args.size_of_filter
     classifier.integrate_train(data_path,classifier_list, args.force_train)
     structure_dict = {}
+
     for i,cl in enumerate(classifier_list):
         classifier_score_path = serialize.get_path(path_score,serialize.get_data_name(data_path),cl) + ".csv" 
         classifier_model_path = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1" 
         classifier_size = os.path.getsize(classifier_model_path) * 8 # getsize restituisce dimensione in byte
         correct_size_filter = size_filter - classifier_size
-        FP_items, FPR, size_query =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
-        structure_dict[cl] = {"false_positive items" : FP_items, "FPR" : FPR , "size query" : size_query, 
-        "size_struct" : size_filter }
-    results = DataFrame(structure_dict)
-    print(results)
-    serialize.save_results(results,type_filter)
+        if correct_size_filter < 0:
+            print(f"size of classifier {cl} is greater than budget")
+            continue
+        _, FPR, _ =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
+        structure_dict[cl] = {"FPR" : FPR , "size_struct" : size_filter, "size_classifier" : classifier_size }
+    if len(structure_dict) ==0:
+        print(f"budget is too low to create a {type_filter}")
+    else : 
+        results = DataFrame(structure_dict)
+        print(results)
+        serialize.save_results(results,type_filter)
 
 
 
