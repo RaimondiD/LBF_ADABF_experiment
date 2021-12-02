@@ -34,9 +34,10 @@ def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layer_si
 class MyKerasClassifier(KerasClassifier):
     def __init__(self, build_fn = get_MultiLayerPerceprton, **kwargs):
         super().__init__(build_fn=build_fn, **kwargs)
+        
 
     def save_model(self,path):
-        weights = self.build_fn.get_weights()
+        weights = self.model.get_weights()
         with open(path, "wb") as file:
             pickle.dump(weights, file)
 
@@ -115,12 +116,6 @@ class MultiLayerPerceptron(tf.keras.Model):
         
         )
     
-
-    def save(self, path):
-        weights = self.get_weights()
-        with open(path, "wb") as file:
-            pickle.dump(weights, file)
-
     def fit(self, x, y):
         print(self.epochs)
         super().fit(x, y, epochs = self.epochs)
@@ -170,10 +165,8 @@ def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, 
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
-        try:
-            model.save(path_model + ".pk1")
-        except:
-            serialize.save_score(model, X, y, url, path_score)
+        serialize.save_score(model, X, y, url, path_score)
+        model.save_model(path_model + ".pk1")
 
 
 def get_classifiers(classifier_list, data_path):   
@@ -183,7 +176,7 @@ def get_classifiers(classifier_list, data_path):
         data = json.load(file)
         cl_list = classifier_list
         cl_dict = {key : data[key] for key in cl_list}
-        data_info = os.path.split(data_path.split("_")[0])[1]
+        data_info = serialize.get_data_name(data_path)
     return get_path_and_classifier(cl_dict, data_info)
 
 def get_path_and_classifier(cl_dict, data_info):
@@ -205,7 +198,7 @@ def get_params_list(classifier_list):
                 if(num == "range"):
                     params_classifier[key] = list(range(start,stop+1))
                 else:
-                    params_classifier[key] = np.logspace(start, stop, num)
+                    params_classifier[key] = list(np.logspace(start, stop, num))
             params_list.append(params_classifier)
     return params_list   
 
@@ -234,7 +227,7 @@ def cross_validation_analisys(X,y, models, names, params_list):
 
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 2)
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 5)
     grid_obj.fit(X_train,y_train)
     return    grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
