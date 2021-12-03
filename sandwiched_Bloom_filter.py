@@ -2,11 +2,9 @@ import numpy as np
 import pandas as pd
 import argparse
 import math
-import matplotlib.pyplot as plt
 from Bloom_filter import BloomFilter
 
-
-def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sample):
+def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order = 10):
     '''
     B1 = Initial Bloom filter
     B2 = Backup Bloom filter
@@ -22,14 +20,12 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
         return 
     FP_opt = train_negative.shape[0]
     # Calcolo soglie da testare
-    train_dataset = pd.concat([train_negative, positive_sample])[['url', 'label', 'score']] # 30 % negativi + tutte le chiavi
-    train_dataset = train_dataset.sort_values(by = ['score'], ascending = True, ignore_index = True)
-    threshold_list = train_dataset['score'].round(6).unique()
-    print(train_dataset)
-    print(train_dataset.size, len(threshold_list))
-    for threshold in threshold_list:
-        FP = (train_negative['url'][(train_negative['score'] > threshold)].size) / train_negative['url'].size
-        FN = (positive_sample['url'][(positive_sample['score'] <= threshold)].size) / positive_sample['url'].size
+    train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
+    thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
+    print(train_negative)
+    for threshold in thresholds_list:
+        FP = (train_negative.iloc[:, 0][(train_negative.iloc[:, -1] > threshold)].size) / train_negative.iloc[:, 0].size
+        FN = (positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)].size) / positive_sample.iloc[:, 0].size
         if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): continue
 
         b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
@@ -45,13 +41,13 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
         B1 = BloomFilter(len(KeyB1), b1*m)
         B1.insert(KeyB1['url'])
         # Creazione filtro backup
-        KeyB2 = positive_sample['url'][(positive_sample['score'] <= threshold)]
+        KeyB2 = positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)]
         B2 = BloomFilter(len(KeyB2), b2*m)
         B2.insert(KeyB2)
         # Calcolo FPR
-        B1FalsePositive = B1.test(train_negative['url'], single_key = False)
-        FP_ML = train_negative['url'][(B1FalsePositive == 1) & (train_negative['score'] > threshold)]
-        Negative_ML = train_negative['url'][(B1FalsePositive == 1) & (train_negative['score'] <= threshold)]
+        B1FalsePositive = B1.test(train_negative.iloc[:, 0], single_key = False)
+        FP_ML = train_negative.iloc[:, 0][(B1FalsePositive == 1) & (train_negative.iloc[:, -1] > threshold)]
+        Negative_ML = train_negative.iloc[:, 0][(B1FalsePositive == 1) & (train_negative.iloc[:, -1] <= threshold)]
         FP_B2 = B2.test(Negative_ML, single_key = False)
         FP_tot = sum(FP_B2) + len(FP_ML)
         print('Threshold: %f, False positive items: %d' %(round(threshold, 3), FP_tot))
@@ -62,35 +58,27 @@ def Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sa
             optimal_B2 = B2
 
     return optimal_B1, optimal_B2, optimal_threshold
-
     
-def main(DATA_PATH,R_sum,others):
+def main(DATA_PATH, R_sum, others):
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('--threshold_min', action="store", dest="min_thres", type=float, required=True,
-                        help="Minimum threshold for positive samples")
-    parser.add_argument('--threshold_max', action="store", dest="max_thres", type=float, required=True,
-                        help="Maximum threshold for positive samples")
-    
-
+    parser.add_argument('--quantile_order', action = "store", dest = "quantile_order", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
-    min_thres = results.min_thres
-    max_thres = results.max_thres
+
+    quantile_order = results.quantile_order
 
     '''
     Load the data and select training data
     '''
     data = pd.read_csv(DATA_PATH)
-    negative_sample = data.loc[(data['label']==0)]
-    positive_sample = data.loc[(data['label']==1)]
+    negative_sample = data.loc[(data['label'] == 0)]
+    positive_sample = data.loc[(data['label'] == 1)]
     train_negative = negative_sample.sample(frac = 0.3)
-
     b = R_sum / len(positive_sample)
-    print(len(positive_sample))
-    '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(max_thres, min_thres, b, train_negative, positive_sample)
 
-    '''Stage 2: Run LBF on all the samples'''
+    '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
+    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order)
+
+    '''Stage 2: Run SLBF on all the samples'''
     ### Test queries
     B1FalsePositive = optimal_B1.test(negative_sample['url'], single_key = False)
     FP_ML = negative_sample['url'][(B1FalsePositive > thres_opt) & (negative_sample['score'] > thres_opt)]
@@ -101,14 +89,11 @@ def main(DATA_PATH,R_sum,others):
     print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
     return FP_items, FPR, len(negative_sample)
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
-                    help="path of the dataset")
-    parser.add_argument('--size_of_Sandwiched', action="store", dest="R_sum", type=int, required=True,
-                    help="size of the Ada-BF")
-    result =parser.parse_known_args() 
+    parser.add_argument('--data_path', action = "store", dest = "data_path", type = str, required = True, help = "path of the dataset")
+    parser.add_argument('--size_of_Sandwiched', action = "store", dest = "R_sum", type = int, required = True, help = "size of the Ada-BF")
+    result =parser.parse_known_args()  
     main(result[0].data_path, result[0].R_sum, result[1])
 
 

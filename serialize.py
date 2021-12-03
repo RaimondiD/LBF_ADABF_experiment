@@ -1,4 +1,3 @@
-from numpy.core.fromnumeric import size
 import pandas as pd
 import pickle 
 import os
@@ -28,9 +27,9 @@ def save_score(model, X_test,y, url, save_path):
     save_object = pd.DataFrame(d)
     save_object.to_csv(save_path+".csv")
         
-
 def get_data_name(data_path):
-    return data_path.split("_")[0].split("/")[1]
+    '''Datapath nella forma path_to_dataset/datasetname_data.csv'''
+    return data_path.parts[-1].split("_")[0]
 
 def get_path(dir_path, data_name, classifier):
-    return dir_path + data_name + "/"  + classifier 
+    return dir_path / data_name / classifier 

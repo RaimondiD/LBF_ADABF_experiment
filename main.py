@@ -6,6 +6,7 @@ import argparse
 import classifier
 import serialize
 import os
+from pathlib import Path
 
 path_score = classifier.path_score
 path_classifier = classifier.path_classifier
@@ -15,24 +16,22 @@ dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
-                    help="path of the dataset")
+    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True, help="path of the dataset")
     parser.add_argument("--classifier_list", action = "store", dest = "classifier_list", type = str, nargs = '+', required= True, help = "list of used classifier " )
     parser.add_argument("--type_filter", action = "store", dest = "type_filter", type = str, required= True, help = "type of fitler to build ")
     parser.add_argument("--force_train", action = "store_true", dest = "force_train")
-    parser.add_argument('--size_of_filter', action="store", dest="size_of_filter", type=int, required=True,
-                    help="size of the filter")
+    parser.add_argument('--size_of_filter', action="store", dest="size_of_filter", type=int, required=True, help="size of the filter")
 
     args, other = parser.parse_known_args()
-    data_path = args.data_path
+    data_path = Path(args.data_path)
     classifier_list = args.classifier_list
     type_filter  = args.type_filter
     size_filter = args.size_of_filter
     classifier.integrate_train(data_path,classifier_list, args.force_train)
     structure_dict = {}
     for i,cl in enumerate(classifier_list):
-        classifier_score_path = serialize.get_path(path_score,serialize.get_data_name(data_path),cl) + ".csv" 
-        classifier_model_path = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1" 
+        classifier_score_path = serialize.get_path(path_score,serialize.get_data_name(data_path),cl).with_suffix(".csv") 
+        classifier_model_path = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl).with_suffix(".pk1") 
         classifier_size = os.path.getsize(classifier_model_path) * 8 # getsize restituisce dimensione in byte
         correct_size_filter = size_filter - classifier_size
         FP_items, FPR, size_query =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
