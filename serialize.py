@@ -10,6 +10,7 @@ def load_dataset(path):
     return pd.read_csv(path)
 
 def save_results(dict, filter_name):
+    try_to_solve(result_path)
     dict.to_csv(result_path + filter_name)
 
 def save_model(model, save_path):
