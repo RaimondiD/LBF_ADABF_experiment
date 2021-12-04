@@ -22,7 +22,7 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     # Calcolo soglie da testare
     train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
-    
+
     for threshold in thresholds_list:
         FP = (train_negative.iloc[:, 0][(train_negative.iloc[:, -1] > threshold)].size) / train_negative.iloc[:, 0].size
         FN = (positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)].size) / positive_sample.iloc[:, 0].size
@@ -61,10 +61,10 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     
 def main(DATA_PATH, R_sum, others):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--quantile_order', action = "store", dest = "quantile_order", type = int, required = True, help = "order of quantiles to be tested")
+    parser.add_argument('--thresholds_q', action = "store", dest = "thresholds_q", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
 
-    quantile_order = results.quantile_order
+    thresholds_q = results.thresholds_q
 
     '''
     Load the data and select training data
@@ -76,7 +76,7 @@ def main(DATA_PATH, R_sum, others):
     b = R_sum / len(positive_sample)
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order)
+    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(b, train_negative, positive_sample, thresholds_q)
 
     '''Stage 2: Run SLBF on all the samples'''
     ### Test queries

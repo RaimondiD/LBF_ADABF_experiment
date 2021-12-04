@@ -31,10 +31,10 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
 
 def main(data_path, size_filter, others):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--quantile_order', action = "store", dest = "quantile_order", type = int, required = True, help = "order of quantiles to be tested")
+    parser.add_argument('--thresholds_q', action = "store", dest = "thresholds_q", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
 
-    quantile_order = results.quantile_order
+    thresholds_q = results.thresholds_q
     DATA_PATH = data_path
     R_sum = size_filter
 
@@ -47,7 +47,7 @@ def main(data_path, size_filter, others):
     train_negative = negative_sample.sample(frac = 0.3)
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_order)
+    bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, thresholds_q)
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
     ML_positive = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] > thres_opt)]
