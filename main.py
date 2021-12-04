@@ -49,22 +49,3 @@ if __name__ == "__main__":
         serialize.save_results(results,type_filter)
 
 
-
-
-    #domande:
-    #   percentuale dataset?
-    #   non considerata taglia classificatore
-    #   come lavoro sulla taglia dei filtri (solo 1, + di una...)
-    #   costruisco 1 tipologia di filtro?
-
-
-
-    #model selection: prendo parametri strutturali : n_features, n_split e blocco la taglia massima
-
-    #cose da fare:
-            #model selection -> parametri strutturali  con valutazione classificatore area sotto curva ROC (AUC) e area sotto curva precision-recall-> guardo sklearn
-            # e area sotto recall SVM (margine iperpiano) RF -> probabilità
-            #sottrazione taglia
-            #sistemo soglia
-            #sistemo save model
-            #parametri da input -> già fatto (?)
