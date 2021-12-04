@@ -10,13 +10,8 @@ def load_dataset(path):
     return pd.read_csv(path)
 
 def save_results(dict, filter_name):
-<<<<<<< HEAD
-    try_to_solve(result_path)
-    dict.to_csv(result_path + filter_name)
-=======
     result_path.mkdir(parents = True, exist_ok = True)
     dict.to_csv(result_path / filter_name)
->>>>>>> 0cf985a35305b227db5d7661c6523126db2480cc
 
 def save_model(model, save_path):
     '''salva i modelli'''

@@ -47,7 +47,3 @@ if __name__ == "__main__":
         print(results)
         serialize.save_results(results,type_filter)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 0cf985a35305b227db5d7661c6523126db2480cc
