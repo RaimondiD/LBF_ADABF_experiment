@@ -16,12 +16,12 @@ Grid:
  
 
 **Input arguments**: 
-- `--data_path`: a csv file includes the items and labels; `
-- --size_of_filter`: size of the entire structure (classifier + filter);
+- `--data_path`: a csv file includes the items and labels; 
+- `--size_of_filter`: size of the entire structure (classifier + filter);
 - `--classifier_list`: list of classifier that will be used in the learned filter (RF -> random forest, SVM -> linear support vector machine, FFNN -> multi-strate perceptron).
 - `--force_train`: force training of all classifiers specified in classifier list. if the argument isn't provided only classifier without a saved model and score are trained.
-- `type_filter` : specify the type of filter (learned bloom filter, sandwiched learned bloom filter o Ada-BF)
-- (for LBF and SLBF)`--threshold_min` and `--threshold_max`, provide the range of the score threshold (between `threshold_min` and `threshold_max`). Items with score larger than the threshold are identified as keys;
+- `--type_filter` : specify the type of filter (learned bloom filter, sandwiched learned bloom filter o Ada-BF).
+- (for LBF and SLBF)`--thresholds_q`: for these filters, the thresholds to be tested correspond to the q-order quantiles of the dataset used for training the filter, the one that generates the structure with the lowest number of false positives is chosen. This parameter specifies the order q of the quantiles. For example, if thresholds_q is set to 10, all quantiles of order 10 will be tested as thresholds.
 - (for Ada-BF and disjoint Ada-BF) `--num_group_min` and `--num_group_max` give the range of number of groups to divide (range of *g*
 ); `--c_min` and `--c_max` provide the range of *c* where *c=m_j/m_{j+1}*
 
