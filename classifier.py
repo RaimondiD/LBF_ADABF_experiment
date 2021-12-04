@@ -207,7 +207,7 @@ def get_params_list(classifier_list):
 def cross_validation_analisys(X,y, models, names, params_list):
     X = np.array(X)
     y = np.array(y)
-    kf = StratifiedKFold(n_splits = 2)
+    kf = StratifiedKFold()
     result = {}
     max_scores = {}
     best_estimators = {}
@@ -228,7 +228,7 @@ def cross_validation_analisys(X,y, models, names, params_list):
 
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 2)
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 5)
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
