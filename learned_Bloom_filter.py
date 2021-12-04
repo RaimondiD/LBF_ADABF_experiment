@@ -9,6 +9,7 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
     # Calcolo soglie da testare
     train_dataset = np.array(pd.concat([train_negative, positive_sample]).iloc[:, -1]) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
+    print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
 
     for threshold in thresholds_list:
         query = positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)]
@@ -21,7 +22,6 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
         FP_items = sum(BF_positive) + len(ML_positive)
 
         print('Threshold: %f, False positive items: %d' %(round(threshold, 2), FP_items))
-        # print('Threshold: %f, False positive items: %d (%d dal modello, %d dal backup), Tempo : %f, Negativi testati: %d' %(round(threshold, 7), FP_items, len(ML_positive), sum(BF_positive), round(stop - start, 5), bloom_negative.size))
         if FP_opt > FP_items:
             FP_opt = FP_items
             thres_opt = threshold

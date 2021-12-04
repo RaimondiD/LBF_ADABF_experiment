@@ -115,11 +115,6 @@ class MultiLayerPerceptron(tf.keras.Model):
                 ]
         
         )
-    
-    def save(self, path):
-        weights = self.get_weights()
-        with open(path, "wb") as file:
-            pickle.dump(weights, file)
 
     def fit(self, x, y):
         super().fit(x, y, epochs = self.epochs)
@@ -154,8 +149,7 @@ def integrate_train(data_path, classifier_list, force_train):  #metodo per capir
         train_list = []
         for cl in classifier_list:
             path_s = serialize.get_path(path_score, serialize.get_data_name(data_path), cl).with_suffix(".csv") #ricava il path a cui dovrebbero essere salvati gli score, nel caso siano stati calcolati
-            print(path_s)
-            #path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1"
+            path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl).with_suffix(".pk1")
             try:
                 open(path_s) and open(path_m)
             except:
@@ -168,7 +162,7 @@ def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, 
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
         serialize.save_score(model, X, y, url, path_score)
-        model.save_model(path_model + ".pk1")
+        model.save_model(path_model.with_suffix(".pk1"))
 
 def get_classifiers(classifier_list, data_path):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
@@ -183,8 +177,12 @@ def get_classifiers(classifier_list, data_path):
 def get_path_and_classifier(cl_dict, data_info):
     ''' inizializza gli oggetti relativi ai classificatori utilizzati in '''
     train_list =  [classifier_fun[key]()(**kwargs) for key, kwargs in cl_dict.items()] 
-    serialize.try_to_solve(path_score + data_info)
-    serialize.try_to_solve(path_classifier + data_info)
+    ps = Path(path_score / data_info)
+    pc = Path(path_classifier / data_info)
+    ps.mkdir(parents = True, exist_ok = True)
+    pc.mkdir(parents = True, exist_ok = True)
+    # serialize.try_to_solve(path_score + data_info)
+    # serialize.try_to_solve(path_classifier + data_info)
     path_score_list = [serialize.get_path(path_score, data_info, key) for key in cl_dict]
     path_model_list = [serialize.get_path(path_classifier, data_info, key) for key in cl_dict]
     return train_list, path_score_list, path_model_list
@@ -237,7 +235,7 @@ def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
 
 def get_bloom_dataset(data_path):
     dataset = serialize.load_dataset(data_path)
-    features = [el for el in dataset.columns if el!= 'url']
+    features = [el for el in dataset.columns if el != 'url']
     X = dataset[features].iloc[:,1:-1].to_numpy()
     y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() # .replace(-1, 0) per binary loss
     url = dataset['url']
