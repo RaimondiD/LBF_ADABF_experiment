@@ -30,7 +30,6 @@ class BloomFilter():
         for i in range(self.k):
             self.h.append(hashfunc(self.hash_len))
         self.table = np.zeros(self.hash_len, dtype=int)
-        print(self.k)
         
     def insert(self, key):
         if self.hash_len == 0:

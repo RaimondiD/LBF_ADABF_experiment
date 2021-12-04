@@ -22,7 +22,7 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     # Calcolo soglie da testare
     train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
-    print(train_negative)
+    
     for threshold in thresholds_list:
         FP = (train_negative.iloc[:, 0][(train_negative.iloc[:, -1] > threshold)].size) / train_negative.iloc[:, 0].size
         FN = (positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)].size) / positive_sample.iloc[:, 0].size
