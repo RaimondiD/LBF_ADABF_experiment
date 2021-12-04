@@ -1,25 +1,25 @@
-from os import path
 import os
-from pandas.core.frame import DataFrame
-import tensorflow as tf
-import json
-from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_auc_score, average_precision_score
-import pickle
-from numpy import ndarray
 import numpy as np
 import argparse
+import pickle
+import tensorflow as tf
+import json
+from pandas.core.frame import DataFrame
+from sklearn.model_selection import StratifiedKFold, GridSearchCV
+from sklearn.metrics import roc_auc_score, average_precision_score
+from numpy import ndarray
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split
 from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
+from pathlib import Path
 import serialize
 
-config_path = "models/classifier_conf.json"
-params_path = "models/params_grid_search.json"
-path_classifier = "models/"
-path_score = "score_classifier/"
+config_path = Path("models/classifier_conf.json")
+params_path = Path("models/params_grid_search.json")
+path_classifier = Path("models/")
+path_score = Path("score_classifier/")
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
                    "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                    "FFNN": lambda: MyKerasClassifier}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
@@ -115,15 +115,14 @@ class MultiLayerPerceptron(tf.keras.Model):
                 ]
         
         )
-    
+
     def fit(self, x, y):
-        print(self.epochs)
         super().fit(x, y, epochs = self.epochs)
 
     def predict_proba(self, X):
         scores = self.predict(X)
 
-        return scores.flatten().tolist()
+        return scores.flatten()
 
     def train_step(self, data):
         X, y = data # data dipende da ciò che viene passato a fit()
@@ -143,17 +142,14 @@ class MultiLayerPerceptron(tf.keras.Model):
         out_dense_2 = self.dense2(out_dense_1)
         return out_dense_2
     
-
-
-
 def integrate_train(data_path, classifier_list, force_train):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     if (force_train):
         analysis_and_train(classifier_list, data_path)
     else:
         train_list = []
         for cl in classifier_list:
-            path_s = serialize.get_path(path_score, serialize.get_data_name(data_path), cl) + ".csv" #ricava il path a cui dovrebbero essere salvati gli score, nel caso siano stati calcolati
-            path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl) + ".pk1"
+            path_s = serialize.get_path(path_score, serialize.get_data_name(data_path), cl).with_suffix(".csv") #ricava il path a cui dovrebbero essere salvati gli score, nel caso siano stati calcolati
+            path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl).with_suffix(".pk1")
             try:
                 open(path_s) and open(path_m)
             except:
@@ -166,8 +162,7 @@ def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, 
     for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
         model.fit(X_train, y_train)
         serialize.save_score(model, X, y, url, path_score)
-        model.save_model(path_model + ".pk1")
-
+        model.save_model(path_model.with_suffix(".pk1"))
 
 def get_classifiers(classifier_list, data_path):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
@@ -176,14 +171,18 @@ def get_classifiers(classifier_list, data_path):
         data = json.load(file)
         cl_list = classifier_list
         cl_dict = {key : data[key] for key in cl_list}
-        data_info = serialize.get_data_name(data_path)
+        data_info = data_path.parts[-1].split("_")[0]
     return get_path_and_classifier(cl_dict, data_info)
 
 def get_path_and_classifier(cl_dict, data_info):
     ''' inizializza gli oggetti relativi ai classificatori utilizzati in '''
     train_list =  [classifier_fun[key]()(**kwargs) for key, kwargs in cl_dict.items()] 
-    serialize.try_to_solve(path_score + data_info)
-    serialize.try_to_solve(path_classifier + data_info)
+    ps = Path(path_score / data_info)
+    pc = Path(path_classifier / data_info)
+    ps.mkdir(parents = True, exist_ok = True)
+    pc.mkdir(parents = True, exist_ok = True)
+    # serialize.try_to_solve(path_score + data_info)
+    # serialize.try_to_solve(path_classifier + data_info)
     path_score_list = [serialize.get_path(path_score, data_info, key) for key in cl_dict]
     path_model_list = [serialize.get_path(path_classifier, data_info, key) for key in cl_dict]
     return train_list, path_score_list, path_model_list
@@ -231,12 +230,12 @@ def cross_validation_analisys(X,y, models, names, params_list):
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
     grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 5)
     grid_obj.fit(X_train,y_train)
-    return    grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
+    return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
 
 def get_bloom_dataset(data_path):
     dataset = serialize.load_dataset(data_path)
-    features = [el for el in dataset.columns if el!= 'url']
+    features = [el for el in dataset.columns if el != 'url']
     X = dataset[features].iloc[:,1:-1].to_numpy()
     y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() # .replace(-1, 0) per binary loss
     url = dataset['url']
