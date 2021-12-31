@@ -171,7 +171,7 @@ def get_classifiers(classifier_list, data_path):
         data = json.load(file)
         cl_list = classifier_list
         cl_dict = {key : data[key] for key in cl_list}
-        data_info = data_path.parts[-1].split("_")[0]
+        data_info = Path(data_path).parts[-1].split("_")[0]
     return get_path_and_classifier(cl_dict, data_info)
 
 def get_path_and_classifier(cl_dict, data_info):
@@ -195,11 +195,15 @@ def get_params_list(classifier_list):
             params_dict = data[el]
             params_classifier = {}
             for key in params_dict:
-                start, stop, num = params_dict[key]
-                if(num == "range"):
-                    params_classifier[key] = list(range(start,stop+1))
+                if params_dict[key][-1] == 'list':
+                    params_classifier[key] = params_dict[key][:-1]
+                    print(params_classifier[key])
                 else:
-                    params_classifier[key] = list(np.logspace(start, stop, num))
+                    start, stop, num = params_dict[key]
+                    if(num == "range"):
+                        params_classifier[key] = list(range(start,stop+1))
+                    else:
+                        params_classifier[key] = list(np.logspace(start, stop, num))
             params_list.append(params_classifier)
     return params_list   
 
@@ -228,7 +232,7 @@ def cross_validation_analisys(X,y, models, names, params_list):
 
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 5)
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 2)
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
