@@ -33,8 +33,6 @@ Grid:
 - Run learned Bloom filter on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000  -thresholds_q 10 --type_filter learned_Bloom_filter --classifier_list RF SVM FFNN`  
 - Run sandwiched learned Bloom filter on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000 --thresholds_q 10 --type_filter sandwiched_learned_Bloom_filter --classifier_list RF SVM FFNN`  
 - Run Ada-BF on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000  --num_group_min 8  --num_group_max 12  --c_min 1.6  --c_max 2.5 --type_filter Ada-BF --classifier_list RF SVM FFNN`
->>>>>>> 0cf985a35305b227db5d7661c6523126db2480cc
-- disjoint Ada-BF (not tested): `python disjoint_Ada-BF.py --data_path ./Datasets/URL_data.csv --size_of_Ada_BF 200000  --num_group_min 8  --num_group_max 12  --c_min 1.6  --c_max 2.5`
 
 
 
