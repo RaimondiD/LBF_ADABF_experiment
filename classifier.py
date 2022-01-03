@@ -2,11 +2,12 @@ import os
 import numpy as np
 import argparse
 import pickle
+from sklearn import metrics
 import tensorflow as tf
 import json
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_auc_score, average_precision_score
+from sklearn.metrics import roc_auc_score, average_precision_score, f1_score,accuracy_score
 from numpy import ndarray
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split
@@ -14,6 +15,8 @@ from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
 from pathlib import Path
+from tensorflow.python.framework.ops import reset_default_graph
+from tensorflow.python.ops.gen_nn_ops import depthwise_conv2d_native_backprop_input_eager_fallback
 import serialize
 
 config_path = Path("models/classifier_conf.json")
@@ -23,18 +26,21 @@ path_score = Path("score_classifier/")
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
                    "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                    "FFNN": lambda: MyKerasClassifier}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
-                                               
+metrics_dict = {"ROC" : roc_auc_score, 
+        "average_precision_score" : average_precision_score,
+        "f1-score" : f1_score,
+        "accuracy" : accuracy_score}
 #def take_Multi_Layer(epochs = 5, learning_rate = 1e-3, hidden_layer_size = 20):
 #    return KerasClassifier(build_fn = get_MultiLayerPerceprton, _epochs= epochs, learning_rate = learning_rate, hidden_layer_size = hidden_layer_size)
 
 
-def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layer_size = 20):
-    return MultiLayerPerceptron(epochs = _epochs, learning_rate= learning_rate, hidden_layers_size= hidden_layer_size)
-    
+def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layers_size = 20, _batch_size = None):
+    return MultiLayerPerceptron(epochs = _epochs, learning_rate= learning_rate, hidden_layers_size= hidden_layers_size, batch_size = _batch_size)
+
+
 class MyKerasClassifier(KerasClassifier):
-    def __init__(self, build_fn = get_MultiLayerPerceprton, **kwargs):
-        super().__init__(build_fn=build_fn, **kwargs)
-        
+    def __init__(self, build_fn=get_MultiLayerPerceprton, **sk_params):
+        super().__init__(build_fn=build_fn, **sk_params)
 
     def save_model(self,path):
         weights = self.model.get_weights()
@@ -96,12 +102,13 @@ def flat(lista):
                 
 
 class MultiLayerPerceptron(tf.keras.Model):
-    def __init__(self, epochs = 5 , learning_rate = 1e-3, hidden_layers_size = 20):
+    def __init__(self, epochs = 5 , learning_rate = 1e-3, hidden_layers_size = 20, batch_size = None):
         super().__init__()
         # Parametri da conf
         self.epochs = epochs
         self.learning_rate =  learning_rate
         self.hidden_layer_size = hidden_layers_size
+        self.batch_size = None
         # Struttura della rete
         self.dense1 = tf.keras.layers.Dense(self.hidden_layer_size, activation = tf.nn.relu)
         self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
@@ -117,7 +124,7 @@ class MultiLayerPerceptron(tf.keras.Model):
         )
 
     def fit(self, x, y):
-        super().fit(x, y, epochs = self.epochs)
+        super().fit(x, y, epochs = self.epochs, batch_size = self.batch_size)
 
     def predict_proba(self, X):
         scores = self.predict(X)
@@ -142,9 +149,9 @@ class MultiLayerPerceptron(tf.keras.Model):
         out_dense_2 = self.dense2(out_dense_1)
         return out_dense_2
     
-def integrate_train(data_path, classifier_list, force_train):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
+def integrate_train(data_path, classifier_list, force_train, n_fold_CV):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     if (force_train):
-        analysis_and_train(classifier_list, data_path)
+        analysis_and_train(classifier_list, data_path,n_fold_CV)
     else:
         train_list = []
         for cl in classifier_list:
@@ -155,7 +162,7 @@ def integrate_train(data_path, classifier_list, force_train):  #metodo per capir
             except:
                 train_list.append(cl)
         if(len(train_list)):
-            analysis_and_train(train_list, data_path)
+            analysis_and_train(train_list, data_path,n_fold_CV)
 
 def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, path_model_list):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
@@ -197,7 +204,6 @@ def get_params_list(classifier_list):
             for key in params_dict:
                 if params_dict[key][-1] == 'list':
                     params_classifier[key] = params_dict[key][:-1]
-                    print(params_classifier[key])
                 else:
                     start, stop, num = params_dict[key]
                     if(num == "range"):
@@ -208,10 +214,10 @@ def get_params_list(classifier_list):
     return params_list   
 
 
-def cross_validation_analisys(X,y, models, names, params_list):
+def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV):
     X = np.array(X)
     y = np.array(y)
-    kf = StratifiedKFold()
+    kf = StratifiedKFold(n_splits=n_fold_CV)
     result = {}
     max_scores = {}
     best_estimators = {}
@@ -232,7 +238,7 @@ def cross_validation_analisys(X,y, models, names, params_list):
 
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', cv = 2)
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1')
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
@@ -241,22 +247,28 @@ def get_bloom_dataset(data_path):
     dataset = serialize.load_dataset(data_path)
     features = [el for el in dataset.columns if el != 'url']
     X = dataset[features].iloc[:,1:-1].to_numpy()
-    y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() # .replace(-1, 0) per binary loss
+    y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() 
     url = dataset['url']
     X_train, X_test, y_train, y_test = train_test_split(X,y,train_size= 0.7, random_state=42)
     return X_train, y_train, X_test, y_test, url, X,y
 
-def analysis_and_train(classifier_list, data_path):
+def analysis_and_train(classifier_list, data_path, n_fold_CV):
     X_train, y_train, X_test, y_test, url, X, y = get_bloom_dataset(data_path)
     models,path_score_list ,path_model_list = get_classifiers(classifier_list, data_path)
     params_list = get_params_list(classifier_list)
-    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list)    
+    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV)    
     models_to_train = []
+    classifier_result ={}
     for el, item in best_estimators.items():
         y_score = item.predict(X_test)
-        print(f"{el} roc auc score : {roc_auc_score(y_test,y_score)}")
-        print(f"{el} average precision score : {average_precision_score(y_test,y_score)}")
+        classifier_result[el]= {}
+        for name,fun in metrics_dict.items():
+            classifier_result[el][name] = fun(y_test,y_score)
+            print(f"{name} : {classifier_result[el][name]}")
+        print(classifier_result)
+        serialize.save_classifier_analysis(DataFrame(classifier_result),Path(data_path),el)
         models_to_train.append(item)
+
     train_classifiers(X_train, y_train,url, X, y, models_to_train, path_score_list, path_model_list )
 
 
@@ -265,10 +277,10 @@ if __name__ == "__main__":
     parser.add_argument("--classifier_list", action = "store", dest = "classifier_list", type = str, nargs = '+', required= True, help = "list of used classifier " )
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
                     help="path of the dataset")    
+    parser.add_argument("--nfoldsCV", action= "store", dest = "nfoldsCV",type=int,default = 5, help = "number of folds used in CV (default = 5)")
     args = parser.parse_args()
-    analysis_and_train(args.classifier_list, args.data_path)
+    analysis_and_train(args.classifier_list, args.data_path, args.nfoldsCV)
 
-        # e train
 
 
 

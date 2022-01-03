@@ -1,3 +1,4 @@
+from genericpath import exists
 import pandas as pd
 import pickle 
 import os
@@ -12,6 +13,12 @@ def load_dataset(path):
 def save_results(dict, filter_name):
     result_path.mkdir(parents = True, exist_ok = True)
     dict.to_csv(result_path / filter_name)
+
+def save_classifier_analysis(dict,data_path,classifier):
+    data_name = get_data_name(data_path)
+    dest_dir = result_path / data_name 
+    dest_dir.mkdir(parents= True, exist_ok = True)
+    dict.to_csv(dest_dir / Path(classifier + "_score"))
 
 def save_model(model, save_path):
     '''salva i modelli'''
