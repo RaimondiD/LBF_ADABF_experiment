@@ -75,15 +75,8 @@ class My_SVM(LinearSVC):
 
     def predict_proba(self,X):
         coef = self.coef_
-        intercept = self.intercept_
-        probs = []
-        somma = 0
-        for el in X:
-            for cord,mul in zip(el, flat(list(coef))):
-                somma += cord * mul
-            somma += flat(intercept)
-            probs.append(expit(somma)) 
-            somma = 0
+        intercept = self.intercept_        
+        probs = expit(np.dot(X, coef[0]) + intercept[0])
         return probs
     
 
