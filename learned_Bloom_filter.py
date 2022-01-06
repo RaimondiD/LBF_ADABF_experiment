@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import argparse
+import time
 from Bloom_filter import BloomFilter
 
 def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_order):
@@ -17,7 +18,7 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
         bloom_filter = BloomFilter(n, R_sum)
         bloom_filter.insert(query)
         ML_positive = train_negative.iloc[:, 0][(train_negative.iloc[:, -1] > threshold)]
-        bloom_negative = train_negative.iloc[:, 0][(train_negative.iloc[:, -1] <= threshold)]
+        bloom_negative = train_negative['url'][train_negative.iloc[:, 0][(train_negative.iloc[:, -1] <= threshold)]]
         BF_positive = bloom_filter.test(bloom_negative, single_key = False)
         FP_items = sum(BF_positive) + len(ML_positive)
 
@@ -44,19 +45,21 @@ def main(data_path, size_filter, others):
     data = pd.read_csv(DATA_PATH)
     negative_sample = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-    train_negative = negative_sample.sample(frac = 0.3)
+    train_negative = negative_sample.sample(frac = 0.3,random_state= 42)
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, thresholds_q)
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
+    start = time.time()
     ML_positive = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] > thres_opt)]
-    bloom_negative = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] <= thres_opt)]
+    bloom_negative = negative_sample['url'][negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] <= thres_opt)]]
     BF_positive = bloom_filter_opt.test(bloom_negative, single_key = False)
+    end = time.time()
     FP_items = sum(BF_positive) + len(ML_positive)
     FPR = FP_items/len(negative_sample)
     #print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
-    return FP_items,FPR, len(negative_sample)
+    return FP_items,FPR, len(negative_sample), (end-start)/len(negative_sample)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
