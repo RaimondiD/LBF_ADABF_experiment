@@ -18,11 +18,10 @@ from pathlib import Path
 from tensorflow.python.framework.ops import reset_default_graph
 from tensorflow.python.ops.gen_nn_ops import depthwise_conv2d_native_backprop_input_eager_fallback
 import serialize
+import time
 
 config_path = Path("models/classifier_conf.json")
 params_path = Path("models/params_grid_search.json")
-path_classifier = Path("models/")
-path_score = Path("score_classifier/")
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
                    "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                    "FFNN": lambda: MyKerasClassifier}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
@@ -150,26 +149,39 @@ class MultiLayerPerceptron(tf.keras.Model):
         return out_dense_2
     
 def integrate_train(data_path, classifier_list, force_train, n_fold_CV):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
+    try:
+        time_cl = serialize.load_time(data_path)
+    except:
+        time_cl = {}
     if (force_train):
         analysis_and_train(classifier_list, data_path,n_fold_CV)
     else:
         train_list = []
-        for cl in classifier_list:
-            path_s = serialize.get_path(path_score, serialize.get_data_name(data_path), cl).with_suffix(".csv") #ricava il path a cui dovrebbero essere salvati gli score, nel caso siano stati calcolati
-            path_m = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl).with_suffix(".pk1")
+        s_list, m_list = serialize.get_score_model_path(classifier_list,data_path)
+        for cl,s,m in zip(classifier_list,s_list,m_list):
             try:
-                open(path_s) and open(path_m)
+                open(s) and open(m)
             except:
+                train_list.append(cl)
+            if cl not in train_list and cl not in time_cl:
                 train_list.append(cl)
         if(len(train_list)):
             analysis_and_train(train_list, data_path,n_fold_CV)
 
-def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, path_model_list):
+def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, path_model_list,name_list,data_path):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
-    for model, path_score, path_model  in zip(model_list, path_score_list, path_model_list):  
+    try:
+        time_score = serialize.load_time(data_path)
+    except:
+        time_score = {}
+    for model, path_score, path_model,name  in zip(model_list, path_score_list, path_model_list,name_list):  
         model.fit(X_train, y_train)
+        start = time.time()
         serialize.save_score(model, X, y, url, path_score)
-        model.save_model(path_model.with_suffix(".pk1"))
+        end = time.time()
+        time_score[name] = (end-start)/len(url)
+        model.save_model(path_model)
+    serialize.save_time(data_path,time_score)
 
 def get_classifiers(classifier_list, data_path):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
@@ -178,20 +190,12 @@ def get_classifiers(classifier_list, data_path):
         data = json.load(file)
         cl_list = classifier_list
         cl_dict = {key : data[key] for key in cl_list}
-        data_info = Path(data_path).parts[-1].split("_")[0]
-    return get_path_and_classifier(cl_dict, data_info)
+    return get_path_and_classifier(cl_dict, data_path)
 
-def get_path_and_classifier(cl_dict, data_info):
+def get_path_and_classifier(cl_dict, data_path):
     ''' inizializza gli oggetti relativi ai classificatori utilizzati in '''
     train_list =  [classifier_fun[key]()(**kwargs) for key, kwargs in cl_dict.items()] 
-    ps = Path(path_score / data_info)
-    pc = Path(path_classifier / data_info)
-    ps.mkdir(parents = True, exist_ok = True)
-    pc.mkdir(parents = True, exist_ok = True)
-    # serialize.try_to_solve(path_score + data_info)
-    # serialize.try_to_solve(path_classifier + data_info)
-    path_score_list = [serialize.get_path(path_score, data_info, key) for key in cl_dict]
-    path_model_list = [serialize.get_path(path_classifier, data_info, key) for key in cl_dict]
+    path_score_list, path_model_list = serialize.get_score_model_path(cl_dict,data_path)
     return train_list, path_score_list, path_model_list
 
 def get_params_list(classifier_list):
@@ -217,7 +221,7 @@ def get_params_list(classifier_list):
 def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV):
     X = np.array(X)
     y = np.array(y)
-    kf = StratifiedKFold(n_splits=n_fold_CV)
+    kf = StratifiedKFold(n_splits=n_fold_CV,random_state=42,shuffle=True)
     result = {}
     max_scores = {}
     best_estimators = {}
@@ -265,11 +269,11 @@ def analysis_and_train(classifier_list, data_path, n_fold_CV):
         for name,fun in metrics_dict.items():
             classifier_result[el][name] = fun(y_test,y_score)
             print(f"{name} : {classifier_result[el][name]}")
-        print(classifier_result)
+
         serialize.save_classifier_analysis(DataFrame(classifier_result),Path(data_path),el)
         models_to_train.append(item)
 
-    train_classifiers(X_train, y_train,url, X, y, models_to_train, path_score_list, path_model_list )
+    train_classifiers(X_train, y_train,url, X, y, models_to_train, path_score_list, path_model_list,classifier_list, data_path)
 
 
 if __name__ == "__main__":

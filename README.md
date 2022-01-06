@@ -21,7 +21,8 @@ Grid:
 - `--nfoldCV` : number of fold used in CV; default is 5.
 - `--force_train`: force training of all classifiers specified in classifier list. if the argument isn't provided only classifier without a saved model and score are trained.
 - `--type_filter` : specify the type of filter (learned bloom filter, sandwiched learned bloom filter o Ada-BF).
-- (for LBF and SLBF) `--thresholds_q`: for these types of filters, the thresholds to be tested correspond to the q-order quantiles of the dataset used for training the filter, the one that generates the structure with the lowest number of false positives is chosen. This argument specifies the order q of the quantiles. For example, if thresholds_q is set to 10, all quantiles of order 10 will be tested as thresholds.
+- (for LBF and SLBF) 
+- `--thresholds_q`: for these types of filters, the thresholds to be tested correspond to the q-order quantiles of the dataset used for training the filter, the one that generates the structure with the lowest number of false positives is chosen. This argument specifies the order q of the quantiles. For example, if thresholds_q is set to 10, all quantiles of order 10 will be tested as thresholds.
 - (for Ada-BF and disjoint Ada-BF) `--num_group_min` and `--num_group_max` give the range of number of groups to divide (range of *g*
 ); `--c_min` and `--c_max` provide the range of *c* where *c=m_j/m_{j+1}*
 
@@ -31,7 +32,7 @@ Grid:
 - Run Bloom filter: `python Bloom_filter.py --data_path ./Datasets/URL_data_features_all.csv --size_of_BF 200000`
 
 - Run learned Bloom filter on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000  -thresholds_q 10 --type_filter learned_Bloom_filter --classifier_list RF SVM FFNN`  
-- Run sandwiched learned Bloom filter on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000 --thresholds_q 10 --type_filter sandwiched_learned_Bloom_filter --classifier_list RF SVM FFNN`  
+- Run sandwiched learned Bloom filter on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000 --thresholds_q 50 --type_filter sandwiched_learned_Bloom_filter --classifier_list RF SVM FFNN`  
 - Run Ada-BF on all classifier: `python main.py --data_path ./Datasets/URL_data_features_all.csv --size_of_filter 500000  --num_group_min 8  --num_group_max 12  --c_min 1.6  --c_max 2.5 --type_filter Ada-BF --classifier_list RF SVM FFNN`
 
 - disjoint Ada-BF (not tested): `python disjoint_Ada-BF.py --data_path ./Datasets/URL_data.csv --size_of_Ada_BF 200000  --num_group_min 8  --num_group_max 12  --c_min 1.6  --c_max 2.5`

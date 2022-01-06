@@ -8,8 +8,8 @@ import serialize
 import os
 from pathlib import Path
 
-path_score = classifier.path_score
-path_classifier = classifier.path_classifier
+path_score = serialize.path_score
+path_classifier = serialize.path_classifier
 dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
             "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main,
             "Ada-BF" : lambda : Ada_BF.main} 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     size_filter = args.size_of_filter
     classifier.integrate_train(data_path,classifier_list, args.force_train, args.nfoldsCV)
     structure_dict = {}
-
+    cl_time = serialize.load_time(data_path)
     for i,cl in enumerate(classifier_list):
         classifier_score_path = serialize.get_path(path_score,serialize.get_data_name(data_path),cl).with_suffix(".csv") 
         classifier_model_path = serialize.get_path(path_classifier, serialize.get_data_name(data_path), cl).with_suffix(".pk1") 
@@ -39,8 +39,9 @@ if __name__ == "__main__":
         if correct_size_filter < 0:
             print(f"size of classifier {cl} is greater than budget")
             continue
-        _, FPR, _ =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
-        structure_dict[cl] = {"FPR" : FPR , "size_struct" : size_filter, "size_classifier" : classifier_size }
+        _, FPR, _ ,filter_time =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
+        structure_dict[cl] = {"FPR" : FPR , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ":
+        cl_time[cl] + filter_time}
     if len(structure_dict) ==0:
         print(f"budget is too low to create a {type_filter}")
     else : 
