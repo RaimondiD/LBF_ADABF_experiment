@@ -3,6 +3,7 @@ import pandas as pd
 import argparse
 import math
 from Bloom_filter import BloomFilter
+import time
 
 def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order = 10):
     '''
@@ -42,13 +43,16 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
         B1.insert(KeyB1['url'])
         # Creazione filtro backup
         KeyB2 = positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)]
+        KeyB2 = [KeyB1['url'][el] for el in KeyB2]
         B2 = BloomFilter(len(KeyB2), b2*m)
         B2.insert(KeyB2)
         # Calcolo FPR
-        B1FalsePositive = B1.test(train_negative.iloc[:, 0], single_key = False)
-        FP_ML = train_negative.iloc[:, 0][(B1FalsePositive == 1) & (train_negative.iloc[:, -1] > threshold)]
-        Negative_ML = train_negative.iloc[:, 0][(B1FalsePositive == 1) & (train_negative.iloc[:, -1] <= threshold)]
-        FP_B2 = B2.test(Negative_ML, single_key = False)
+        B1_test = train_negative.iloc[:, 0]
+        B1_test = [train_negative['url'][el] for el in B1_test]
+        B1FalsePositive = B1.test(B1_test, single_key = False)
+        FP_ML = train_negative[train_negative.iloc[:, 0][(B1FalsePositive == 1)] & (train_negative.iloc[:, -1] > threshold)]
+        Negative_ML = train_negative [train_negative.iloc[:, 0][(B1FalsePositive == 1)] & (train_negative.iloc[:, -1] <= threshold)]
+        FP_B2 = B2.test(Negative_ML['url'], single_key = False)
         FP_tot = sum(FP_B2) + len(FP_ML)
         print('Threshold: %f, False positive items: %d' %(round(threshold, 3), FP_tot))
         if FP_opt > FP_tot:
@@ -72,7 +76,7 @@ def main(DATA_PATH, R_sum, others):
     data = pd.read_csv(DATA_PATH)
     negative_sample = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-    train_negative = negative_sample.sample(frac = 0.3)
+    train_negative = negative_sample.sample(frac = 0.3,random_state=42)
     b = R_sum / len(positive_sample)
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
@@ -80,14 +84,16 @@ def main(DATA_PATH, R_sum, others):
 
     '''Stage 2: Run SLBF on all the samples'''
     ### Test queries
+    start = time.time()
     B1FalsePositive = optimal_B1.test(negative_sample['url'], single_key = False)
     FP_ML = negative_sample['url'][(B1FalsePositive > thres_opt) & (negative_sample['score'] > thres_opt)]
     Negative_ML = negative_sample['url'][(B1FalsePositive > thres_opt) & (negative_sample['score'] <= thres_opt)]
     BF_positive = optimal_B2.test(Negative_ML, single_key = False)
+    end = time.time()
     FP_items = sum(BF_positive) + len(FP_ML)
     FPR = FP_items/len(negative_sample)
     print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
-    return FP_items, FPR, len(negative_sample)
+    return FP_items, FPR, len(negative_sample), (end-start)/len(negative_sample)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

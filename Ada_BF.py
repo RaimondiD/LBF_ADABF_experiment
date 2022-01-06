@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 from Bloom_filter import hashfunc
+import time
 
 
 class Ada_BloomFilter():
@@ -110,7 +111,7 @@ def main(DATA_PATH, R_sum, others):
     data = pd.read_csv(DATA_PATH)
     negative_sample = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-    train_negative = negative_sample.sample(frac = 0.3)
+    train_negative = negative_sample.sample(frac = 0.3,random_state=42)
 
     '''
     Plot the distribution of scores
@@ -131,6 +132,7 @@ def main(DATA_PATH, R_sum, others):
     
     '''Stage 2: Run Ada-BF on all the samples'''
     ### Test Queries
+    start = time.time()
     ML_positive = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] >= thresholds_opt[-2])]
     query_negative = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] < thresholds_opt[-2])]
     score_negative = negative_sample.iloc[:, -1][(negative_sample.iloc[:, -1] < thresholds_opt[-2])]
@@ -142,10 +144,11 @@ def main(DATA_PATH, R_sum, others):
         k = k_max_opt - ix
         test_result[ss] = bloom_filter_opt.test(query_s, k)
         ss += 1
+    end = time.time()
     FP_items = sum(test_result) + len(ML_positive)
     FPR = FP_items/len(negative_sample.iloc[:, 0])
     print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(negative_sample.iloc[:, 0])))
-    return FP_items, FPR, len(negative_sample)
+    return FP_items, FPR, len(negative_sample),(end-start)/len(negative_sample)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
