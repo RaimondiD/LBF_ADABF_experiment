@@ -8,8 +8,16 @@ result_path = Path("results/")
 path_classifier = Path("models/")
 path_score = Path("score_classifier/")
 
-def load_dataset(path):
-    return pd.read_csv(path)
+def load_dataset(path, pos_ratio, neg_ratio, pos_label = 1, neg_label = -1):
+    dataset = pd.read_csv(path)
+
+    negative_samples = dataset.loc[(dataset['label'] == neg_label)].sample(frac = neg_ratio)
+    positive_samples = dataset.loc[(dataset['label'] == pos_label)].sample(frac = pos_ratio)
+    dataset = pd.concat([negative_samples, positive_samples], axis = 0)
+
+    print(f"Number of positive samples, negative samples: {len(positive_samples)}, {len(negative_samples)}")
+
+    return dataset
 
 def load_time(data_path):
     total_path = get_time_path(data_path)

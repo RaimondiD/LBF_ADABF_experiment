@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import argparse
 import time
+import serialize
 from Bloom_filter import BloomFilter
 
 def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_order):
@@ -13,12 +14,12 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
     print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
 
     for threshold in thresholds_list:
-        query = positive_sample.iloc[:, 0][(positive_sample.iloc[:, -1] <= threshold)]
+        query = positive_sample.iloc[:, 1][(positive_sample.iloc[:, -1] <= threshold)]
         n = len(query)
         bloom_filter = BloomFilter(n, R_sum)
         bloom_filter.insert(query)
-        ML_positive = train_negative.iloc[:, 0][(train_negative.iloc[:, -1] > threshold)]
-        bloom_negative = train_negative['url'][train_negative.iloc[:, 0][(train_negative.iloc[:, -1] <= threshold)]]
+        ML_positive = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] > threshold)]
+        bloom_negative = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] <= threshold)]
         BF_positive = bloom_filter.test(bloom_negative, single_key = False)
         FP_items = sum(BF_positive) + len(ML_positive)
 
@@ -30,7 +31,7 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
 
     return bloom_filter_opt, thres_opt
 
-def main(data_path, size_filter, others):
+def main(data_path, size_filter, pos_ratio, neg_ratio, negTest_ratio, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--thresholds_q', action = "store", dest = "thresholds_q", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
@@ -42,7 +43,7 @@ def main(data_path, size_filter, others):
     '''
     Load the data and select training data.
     '''
-    data = pd.read_csv(DATA_PATH)
+    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
     negative_sample = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
     train_negative = negative_sample.sample(frac = 0.3,random_state= 42)
@@ -51,15 +52,16 @@ def main(data_path, size_filter, others):
     bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, thresholds_q)
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
+    negative_sample_test = negative_sample.sample(frac = negTest_ratio, random_state = 42)
     start = time.time()
-    ML_positive = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] > thres_opt)]
-    bloom_negative = negative_sample['url'][negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] <= thres_opt)]]
+    ML_positive = negative_sample_test.iloc[:, 1][(negative_sample_test.iloc[:, -1] > thres_opt)]
+    bloom_negative = negative_sample_test.iloc[:, 1][(negative_sample_test.iloc[:, -1] <= thres_opt)]
     BF_positive = bloom_filter_opt.test(bloom_negative, single_key = False)
     end = time.time()
     FP_items = sum(BF_positive) + len(ML_positive)
-    FPR = FP_items/len(negative_sample)
+    FPR = FP_items/len(negative_sample_test)
     #print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample)))
-    return FP_items,FPR, len(negative_sample), (end-start)/len(negative_sample)
+    return FP_items,FPR, len(negative_sample_test), (end-start)/len(negative_sample_test)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

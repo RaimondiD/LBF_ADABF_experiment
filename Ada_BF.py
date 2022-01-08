@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
+import serialize
 from Bloom_filter import hashfunc
 import time
 
@@ -92,7 +93,7 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
 '''
 Implement Ada-BF
 '''
-def main(DATA_PATH, R_sum, others):
+def main(DATA_PATH, R_sum, pos_ratio, neg_ratio, negTest_ratio, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_group_min', action="store", dest="min_group", type=int, required=True, help="Minimum number of groups")
     parser.add_argument('--num_group_max', action="store", dest="max_group", type=int, required=True, help="Maximum number of groups")
@@ -108,7 +109,7 @@ def main(DATA_PATH, R_sum, others):
     '''
     Load the data and select training data
     '''
-    data = pd.read_csv(DATA_PATH)
+    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
     negative_sample = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
     train_negative = negative_sample.sample(frac = 0.3,random_state=42)
@@ -132,10 +133,11 @@ def main(DATA_PATH, R_sum, others):
     
     '''Stage 2: Run Ada-BF on all the samples'''
     ### Test Queries
+    negative_sample_test = negative_sample.sample(frac = negTest_ratio, random_state = 42)
     start = time.time()
-    ML_positive = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] >= thresholds_opt[-2])]
-    query_negative = negative_sample.iloc[:, 0][(negative_sample.iloc[:, -1] < thresholds_opt[-2])]
-    score_negative = negative_sample.iloc[:, -1][(negative_sample.iloc[:, -1] < thresholds_opt[-2])]
+    ML_positive = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] >= thresholds_opt[-2])]
+    query_negative = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] < thresholds_opt[-2])]
+    score_negative = negative_sample_test.iloc[:, -1][(negative_sample_test.iloc[:, -1] < thresholds_opt[-2])]
     test_result = np.zeros(len(query_negative))
     ss = 0
     for score_s, query_s in zip(score_negative, query_negative):
@@ -146,9 +148,9 @@ def main(DATA_PATH, R_sum, others):
         ss += 1
     end = time.time()
     FP_items = sum(test_result) + len(ML_positive)
-    FPR = FP_items/len(negative_sample.iloc[:, 0])
-    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(negative_sample.iloc[:, 0])))
-    return FP_items, FPR, len(negative_sample),(end-start)/len(negative_sample)
+    FPR = FP_items/len(negative_sample_test.iloc[:, 0])
+    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(negative_sample_test.iloc[:, 0])))
+    return FP_items, FPR, len(negative_sample_test),(end-start)/len(negative_sample_test)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

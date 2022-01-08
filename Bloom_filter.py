@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.utils import murmurhash3_32
 from random import randint
+import serialize
 import argparse
 
 
@@ -77,16 +78,20 @@ class BloomFilter():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
-                        help="path of the dataset")
-    parser.add_argument('--size_of_BF', action="store", dest="R_sum", type=int, required=True,
-                        help="size of the BF")
+    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True, help="path of the dataset")
+    parser.add_argument('--size_of_BF', action="store", dest="R_sum", type=int, required=True, help="size of the BF")
+    parser.add_argument('--pos_ratio', action="store", dest="pos_ratio", type=float, required=True, help="size of the BF")
+    parser.add_argument('--neg_ratio', action="store", dest="neg_ratio", type=float, required=True, help="size of the BF")
+    parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
 
     results = parser.parse_args()
     DATA_PATH = results.data_path
     R_sum = results.R_sum
+    pos_ratio = results.pos_ratio
+    neg_ratio = results.neg_ratio
+    negTest_ratio = results.negTest_ratio
 
-    data = pd.read_csv(DATA_PATH)
+    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
 
     negative_sample = data.loc[(data['label'] == -1)]
     positive_sample = data.loc[(data['label'] == 1)]
@@ -95,6 +100,6 @@ if __name__ == '__main__':
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
-    query_negative = negative_sample['url']
+    query_negative = negative_sample.sample(frac = negTest_ratio, random_state = 42)
     n1 = bloom_filter.test(query_negative, single_key=False)
     print('False positive items: ', sum(n1))

@@ -1,10 +1,13 @@
-import os
+from matplotlib.pyplot import axis
 import numpy as np
 import argparse
 import pickle
-from sklearn import metrics
 import tensorflow as tf
 import json
+import serialize
+import time
+import math
+import pandas as pd
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import roc_auc_score, average_precision_score, f1_score,accuracy_score
@@ -15,10 +18,7 @@ from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
 from pathlib import Path
-from tensorflow.python.framework.ops import reset_default_graph
-from tensorflow.python.ops.gen_nn_ops import depthwise_conv2d_native_backprop_input_eager_fallback
-import serialize
-import time
+
 
 config_path = Path("models/classifier_conf.json")
 params_path = Path("models/params_grid_search.json")
@@ -141,13 +141,13 @@ class MultiLayerPerceptron(tf.keras.Model):
         out_dense_2 = self.dense2(out_dense_1)
         return out_dense_2
     
-def integrate_train(data_path, classifier_list, force_train, n_fold_CV):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
+def integrate_train(data_path, classifier_list, force_train, n_fold_CV, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     try:
         time_cl = serialize.load_time(data_path)
     except:
         time_cl = {}
     if (force_train):
-        analysis_and_train(classifier_list, data_path,n_fold_CV)
+        analysis_and_train(classifier_list, data_path,n_fold_CV, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc)
     else:
         train_list = []
         s_list, m_list = serialize.get_score_model_path(classifier_list,data_path)
@@ -159,7 +159,7 @@ def integrate_train(data_path, classifier_list, force_train, n_fold_CV):  #metod
             if cl not in train_list and cl not in time_cl:
                 train_list.append(cl)
         if(len(train_list)):
-            analysis_and_train(train_list, data_path,n_fold_CV)
+            analysis_and_train(train_list, data_path, n_fold_CV, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc)
 
 def train_classifiers(X_train, y_train, url, X, y, model_list, path_score_list, path_model_list,name_list,data_path):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
@@ -224,6 +224,7 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV):
     for train,test in kf.split(X,y):    
         X_train, X_test = X[train], X[test]
         y_train, y_test = y[train], y[test]
+        print(X_test, y_test)
         for estimator, params, name in zip(models, params_list, names):
             best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
             result[name].append(best_score) 
@@ -239,18 +240,28 @@ def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
-
-def get_bloom_dataset(data_path):
-    dataset = serialize.load_dataset(data_path)
+def get_bloom_dataset(data_path, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc):
+    dataset = serialize.load_dataset(data_path, pos_ratio = pos_ratio, neg_ratio = neg_ratio)
     features = [el for el in dataset.columns if el != 'url']
     X = dataset[features].iloc[:,1:-1].to_numpy()
     y = dataset[features].iloc[:,-1].replace(-1, 0).to_numpy() 
-    url = dataset['url']
-    X_train, X_test, y_train, y_test = train_test_split(X,y,train_size= 0.7, random_state=42)
-    return X_train, y_train, X_test, y_test, url, X,y
 
-def analysis_and_train(classifier_list, data_path, n_fold_CV):
-    X_train, y_train, X_test, y_test, url, X, y = get_bloom_dataset(data_path)
+    ds_positive_samples, ds_negative_samples = dataset[dataset['label'] == 1], dataset[dataset['label'] == -1]
+    ds_train_pos, ds_test_pos = train_test_split(ds_positive_samples , train_size = pos_ratio_clc)
+    ds_train_neg, ds_test_neg = train_test_split(ds_negative_samples , train_size = neg_ratio_clc)
+    ds_train, ds_test = pd.concat([ds_train_pos, ds_train_neg], axis = 0), pd.concat([ds_test_pos, ds_test_neg], axis = 0) 
+    ds_train, ds_test = ds_train.sample(frac = 1, random_state = 42), ds_test.sample(frac = 1, random_state = 42) # Shuffle
+
+    X_train, X_test = ds_train[features].iloc[:,1:-1].to_numpy(), ds_test[features].iloc[:,1:-1].to_numpy()
+    y_train, y_test = ds_train[features].iloc[:,-1].replace(-1, 0).to_numpy(), ds_test[features].iloc[:,-1].replace(-1, 0).to_numpy()
+
+    url = dataset['url']
+
+    print(f"X_train_pos: {len(ds_train_pos)} {ds_train_pos}, X_train_neg: {len(ds_train_neg)}")
+    return X_train, y_train, X_test, y_test, url, X, y
+
+def analysis_and_train(classifier_list, data_path, n_fold_CV, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc):
+    X_train, y_train, X_test, y_test, url, X, y = get_bloom_dataset(data_path, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc)
     models,path_score_list ,path_model_list = get_classifiers(classifier_list, data_path)
     params_list = get_params_list(classifier_list)
     best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV)    

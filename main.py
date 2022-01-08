@@ -22,13 +22,22 @@ if __name__ == "__main__":
     parser.add_argument("--force_train", action = "store_true", dest = "force_train")
     parser.add_argument('--size_of_filter', action="store", dest="size_of_filter", type=int, required=True, help="size of the filter")
     parser.add_argument("--nfoldsCV", action= "store", dest = "nfoldsCV", type=int, default = 5, help = "number of fold used in CV (default = 5)")
+    parser.add_argument("--pos_ratio", action = "store", dest = "pos_ratio", type = float, default = 1.0)
+    parser.add_argument("--neg_ratio", action = "store", dest = "neg_ratio", type = float, default = 1.0)
+    parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 1.0)
+    parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 1.0)
+    parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
 
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
     classifier_list = args.classifier_list
     type_filter  = args.type_filter
     size_filter = args.size_of_filter
-    classifier.integrate_train(data_path,classifier_list, args.force_train, args.nfoldsCV)
+    pos_ratio = args.pos_ratio
+    neg_ratio = args.neg_ratio
+    negTest_ratio = args.negTest_ratio
+
+    classifier.integrate_train(data_path,classifier_list, args.force_train, args.nfoldsCV, pos_ratio, neg_ratio, args.pos_ratio_clc, args.neg_ratio_clc)
     structure_dict = {}
     cl_time = serialize.load_time(data_path)
     for i,cl in enumerate(classifier_list):
@@ -39,7 +48,7 @@ if __name__ == "__main__":
         if correct_size_filter < 0:
             print(f"size of classifier {cl} is greater than budget")
             continue
-        _, FPR, _ ,filter_time =dizionario[type_filter]()(classifier_score_path, correct_size_filter , other)
+        _, FPR, _ ,filter_time =dizionario[type_filter]()(classifier_score_path, correct_size_filter , pos_ratio, neg_ratio, negTest_ratio, other)
         structure_dict[cl] = {"FPR" : FPR , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ":
         cl_time[cl] + filter_time}
     if len(structure_dict) ==0:
