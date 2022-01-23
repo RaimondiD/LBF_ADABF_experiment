@@ -1,3 +1,4 @@
+from operator import pos
 import numpy as np
 import pandas as pd
 import argparse
@@ -21,14 +22,22 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     if b < 1: 
         print("err")
         return 
-    FP_opt = train_negative.shape[0]
+    FP_opt = train_negative.shape[0] + 1
     # Calcolo soglie da testare
     train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
 
+    key_B1 = positive_sample
+    keyB1_len = len(key_B1)
+    m = len(positive_sample)
+
     for threshold in thresholds_list:
-        FP = (train_negative.iloc[:, 1][(train_negative.iloc[:, -1] > threshold)].size) / train_negative.iloc[:, 1].size
-        FN = (positive_sample.iloc[:, 1][(positive_sample.iloc[:, -1] <= threshold)].size) / positive_sample.iloc[:, 1].size
+        ML_false_positive = (train_negative.iloc[:, -1] > threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
+        ML_true_negative = (train_negative.iloc[:, -1] <= threshold) # maschera veri negativi generati dal modello rispetto alla soglia considerata
+        ML_false_negative = (positive_sample.iloc[:, -1] <= threshold) # maschera falsi negativi generati dal modello rispetto alla soglia considerata
+
+        FP = (train_negative[ML_false_positive].iloc[:, 1].size) / train_negative.iloc[:, 1].size # stima probabilità di un falso positivo dal modello
+        FN = (positive_sample[ML_false_negative].iloc[:, 1].size) / positive_sample.iloc[:, 1].size #stima probabilità di un falso negativo dal modello
         if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): continue
 
         b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
@@ -36,26 +45,25 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
         if b1 <= 0: # Non serve avere SLBF
             print("b1 = 0")
             break
-        m = len(positive_sample)
+        
         print(f"FP: {FP}, FN: {FN}, b: {b}, b1: {b1}, b2: {b2}")
         
         # Creazione filtro iniziale
-        KeyB1 = positive_sample
-        B1 = BloomFilter(len(KeyB1), b1*m)
-        B1.insert(KeyB1['url'])
+        B1 = BloomFilter(keyB1_len, b1*m)
+        B1.insert(key_B1.iloc[:, 1])
         # Creazione filtro backup
-        KeyB2 = positive_sample.iloc[:, 1][(positive_sample.iloc[:, -1] <= threshold)]
-        B2 = BloomFilter(len(KeyB2), b2*m)
-        B2.insert(KeyB2)
+        key_b2 = positive_sample[ML_false_negative].iloc[:, 1]
+        B2 = BloomFilter(len(key_b2), b2*m)
+        B2.insert(key_b2)
         # Calcolo FPR
-        B1FalsePositive = B1.test(train_negative.iloc[:, 1], single_key = False)
-        FP_ML = train_negative.iloc[:, 1][(B1FalsePositive == 1) & (train_negative.iloc[:, -1] > threshold)]
-        Negative_ML = train_negative.iloc[:, 1][(B1FalsePositive == 1) & (train_negative.iloc[:, -1] <= threshold)]
-        FP_B2 = B2.test(Negative_ML, single_key = False)
-        FP_tot = sum(FP_B2) + len(FP_ML)
-        print('Threshold: %f, False positive items: %d' %(round(threshold, 3), FP_tot))
-        if FP_opt > FP_tot:
-            FP_opt = FP_tot
+        B1_false_positive = B1.test(train_negative.iloc[:, 1], single_key = False)
+        ML_false_positive_list = train_negative.iloc[:, 1][(B1_false_positive) & (ML_false_positive)]
+        ML_true_negative_list = train_negative.iloc[:, 1][(B1_false_positive) & (ML_true_negative)]
+        B2_false_positive = B2.test(ML_true_negative_list, single_key = False)
+        total_false_positive = sum(B2_false_positive) + len(ML_false_positive_list)
+        print('Threshold: %f, False positive items: %d' %(round(threshold, 3), total_false_positive))
+        if FP_opt > total_false_positive:
+            FP_opt = total_false_positive
             optimal_threshold = threshold
             optimal_B1 = B1
             optimal_B2 = B2
