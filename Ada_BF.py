@@ -93,7 +93,7 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
 '''
 Implement Ada-BF
 '''
-def main(DATA_PATH, R_sum, pos_ratio, neg_ratio, negTest_ratio, others):
+def main(DATA_PATH,data_path_test, R_sum, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_group_min', action="store", dest="min_group", type=int, required=True, help="Minimum number of groups")
     parser.add_argument('--num_group_max', action="store", dest="max_group", type=int, required=True, help="Maximum number of groups")
@@ -109,10 +109,9 @@ def main(DATA_PATH, R_sum, pos_ratio, neg_ratio, negTest_ratio, others):
     '''
     Load the data and select training data
     '''
-    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
-    negative_sample = data.loc[(data['label'] == 0)]
+    data = serialize.load_dataset(DATA_PATH)
+    train_negative = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-    train_negative = negative_sample.sample(frac = 0.3,random_state=42)
 
     '''
     Plot the distribution of scores
@@ -133,7 +132,7 @@ def main(DATA_PATH, R_sum, pos_ratio, neg_ratio, negTest_ratio, others):
     
     '''Stage 2: Run Ada-BF on all the samples'''
     ### Test Queries
-    negative_sample_test = negative_sample.sample(frac = negTest_ratio, random_state = 42)
+    negative_sample_test = serialize.load_dataset(data_path_test)
     start = time.time()
     ML_positive = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] >= thresholds_opt[-2])]
     query_negative = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] < thresholds_opt[-2])]

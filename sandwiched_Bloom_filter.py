@@ -62,7 +62,7 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
 
     return optimal_B1, optimal_B2, optimal_threshold
     
-def main(DATA_PATH, R_sum, pos_ratio, neg_ratio, negTest_ratio, others):
+def main(DATA_PATH_train, DATA_PATH_test, R_sum, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--thresholds_q', action = "store", dest = "thresholds_q", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
@@ -72,18 +72,17 @@ def main(DATA_PATH, R_sum, pos_ratio, neg_ratio, negTest_ratio, others):
     '''
     Load the data and select training data
     '''
-    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
-    negative_sample = data.loc[(data['label'] == 0)]
+    data = serialize.load_dataset(DATA_PATH_train)
+    train_negative_sample = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-    train_negative = negative_sample.sample(frac = 0.3,random_state=42)
     b = R_sum / len(positive_sample)
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(b, train_negative, positive_sample, thresholds_q)
+    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(b, train_negative_sample, positive_sample, thresholds_q)
 
     '''Stage 2: Run SLBF on all the samples'''
     ### Test queries
-    negative_sample_test = negative_sample.sample(frac = negTest_ratio, random_state = 42)
+    negative_sample_test = serialize.load_dataset(DATA_PATH_test)
     start = time.time()
     B1FalsePositive = optimal_B1.test(negative_sample_test.iloc[:, 1], single_key = False)
     FP_ML = negative_sample_test.iloc[:, 1][(B1FalsePositive == 1) & (negative_sample_test['score'] > thres_opt)]

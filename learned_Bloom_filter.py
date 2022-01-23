@@ -31,7 +31,7 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
 
     return bloom_filter_opt, thres_opt
 
-def main(data_path, size_filter, pos_ratio, neg_ratio, negTest_ratio, others):
+def main(data_path, data_path_test, size_filter, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--thresholds_q', action = "store", dest = "thresholds_q", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
@@ -43,16 +43,15 @@ def main(data_path, size_filter, pos_ratio, neg_ratio, negTest_ratio, others):
     '''
     Load the data and select training data.
     '''
-    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
-    negative_sample = data.loc[(data['label'] == 0)]
+    data = serialize.load_dataset(DATA_PATH)
+    train_negative = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-    train_negative = negative_sample.sample(frac = 0.3,random_state= 42)
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, thresholds_q)
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
-    negative_sample_test = negative_sample.sample(frac = negTest_ratio, random_state = 42)
+    negative_sample_test = serialize.load_dataset(data_path_test)
     start = time.time()
     ML_positive = negative_sample_test.iloc[:, 1][(negative_sample_test.iloc[:, -1] > thres_opt)]
     bloom_negative = negative_sample_test.iloc[:, 1][(negative_sample_test.iloc[:, -1] <= thres_opt)]
