@@ -97,7 +97,7 @@ def flat(lista):
 class MultiLayerPerceptron(tf.keras.Model):
     def __init__(self, epochs = 5 , learning_rate = 1e-3, hidden_layers_size = 20, batch_size = None):
         super().__init__()
-        # Parametri da conf
+        # Parametri da confbest_score
         self.epochs = epochs
         self.learning_rate =  learning_rate
         self.hidden_layer_size = hidden_layers_size
@@ -280,10 +280,10 @@ if __name__ == "__main__":
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
                     help="path of the dataset")    
     parser.add_argument("--nfoldsCV", action= "store", dest = "nfoldsCV",type=int,default = 5, help = "number of folds used in CV (default = 5)")
-    parser.add_argument("--pos_ratio", action = "store", dest = "pos_ratio", type = float, default = 0.7)
-    parser.add_argument("--neg_ratio", action = "store", dest = "neg_ratio", type = float, default = 0.7)
-    parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 0.7)
-    parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 0.7)
+    parser.add_argument("--pos_ratio", action = "store", dest = "pos_ratio", type = float, default = 1)
+    parser.add_argument("--neg_ratio", action = "store", dest = "neg_ratio", type = float, default = 1)
+    parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 1)
+    parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 1)
     args = parser.parse_args()
     seed = 22012022
     data_path = args.data_path
