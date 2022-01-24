@@ -43,12 +43,10 @@ if __name__ == "__main__":
     neg_ratio_clc = args.neg_ratio_clc
     if(pos_ratio >= 1 or neg_ratio >= 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("post_ration and neg_ratio must be > 0 and < 1 ")
-    if(pos_ratio_clc >= 1 or neg_ratio_clc >= 1 or pos_ratio_clc <=0 or neg_ratio_clc <=0 ):
-        raise AssertionError("pos ratio clc and neg_ratio_clc must be > 0 and < 1")
     dataset = serialize.load_dataset(data_path)
     dataset_train, other_dataset = serialize.divide_dataset(dataset,pos_ratio,neg_ratio,rs)
     dataset_test_filter, _ = serialize.divide_dataset(other_dataset,0,negTest_ratio,rs)
-    id = serialize.get_data_name(data_path) + serialize.magic_id([seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc, negTest_ratio])
+    id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc, negTest_ratio])
     classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list, args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs)
     structure_dict = {}
     cl_time = serialize.load_time(id)

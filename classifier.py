@@ -248,14 +248,9 @@ def separate_data(dataset):
 def get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs):
     dataset = dataset_train
     X,y,key = separate_data(dataset)
-    ds_positive_samples, ds_negative_samples = dataset[dataset['label'] == 1], dataset[dataset['label'] == -1]
-    ds_train_pos, ds_test_pos = train_test_split(ds_positive_samples , train_size = pos_ratio_clc, random_state = rs)
-    ds_train_neg, ds_test_neg = train_test_split(ds_negative_samples , train_size = neg_ratio_clc, random_state = rs)
-    ds_train, ds_test = pd.concat([ds_train_pos, ds_train_neg], axis = 0), pd.concat([ds_test_pos, ds_test_neg], axis = 0) 
-    ds_train, ds_test = ds_train.sample(frac = 1, random_state = rs), ds_test.sample(frac = 1, random_state = rs) # Shuffle
-    X_train, X_test = ds_train.iloc[:,1:-1].to_numpy(), ds_test.iloc[:,1:-1].to_numpy()
-    y_train, y_test = ds_train.iloc[:,-1].replace(-1, 0).to_numpy(), ds_test.iloc[:,-1].replace(-1, 0).to_numpy()
-    print(f"X_train_pos: {len(ds_train_pos)}, X_train_neg: {len(ds_train_neg)}")
+    data_train, data_test = serialize.divide_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs)
+    X_train, y_train = data_train.iloc[:,1:-1].to_numpy(), data_train.iloc[:,-1].replace(-1,0).to_numpy()
+    X_test, y_test = data_test.iloc[:1:-1].to_numpy(), data_test.iloc[:,-1].replace(-1,0).to_numpy()
     return X_train, y_train, X_test, y_test, key, X, y
 
 def analysis_and_train(classifier_list,dataset_train,dataset_test_filter,n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs):
@@ -266,14 +261,15 @@ def analysis_and_train(classifier_list,dataset_train,dataset_test_filter,n_fold_
     models_to_train = []
     classifier_result ={}
     for el, item in best_estimators.items():
-        y_score = item.predict(X_test)
-        classifier_result[el]= {}
-        for name,fun in metrics_dict.items():
-            classifier_result[el][name] = fun(y_test,y_score)
-            print(f"{name} : {classifier_result[el][name]}")
-
-        serialize.save_classifier_analysis(DataFrame(classifier_result),id,el)
         models_to_train.append(item)
+        if len(X_test):
+            y_score = item.predict(X_test)
+            classifier_result[el]= {}
+            for name,fun in metrics_dict.items():
+                classifier_result[el][name] = fun(y_test,y_score)
+                print(f"{name} : {classifier_result[el][name]}")
+
+            serialize.save_classifier_analysis(DataFrame(classifier_result),id,el)
 
     train_classifiers(X_train, y_train,key, X, y, models_to_train, classifier_list, id, dataset_test_filter)
 
@@ -284,10 +280,22 @@ if __name__ == "__main__":
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
                     help="path of the dataset")    
     parser.add_argument("--nfoldsCV", action= "store", dest = "nfoldsCV",type=int,default = 5, help = "number of folds used in CV (default = 5)")
+    parser.add_argument("--pos_ratio", action = "store", dest = "pos_ratio", type = float, default = 0.7)
+    parser.add_argument("--neg_ratio", action = "store", dest = "neg_ratio", type = float, default = 0.7)
+    parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 0.7)
+    parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 0.7)
     args = parser.parse_args()
-    rs = np.random.RandomState(22012022)
-
-    analysis_and_train(args.classifier_list, args.data_path, args.nfoldsCV,rs)
+    seed = 22012022
+    data_path = args.data_path
+    pos_ratio = args.pos_ratio
+    neg_ratio = args.neg_ratio
+    pos_ratio_clc = args.pos_ratio_clc
+    neg_ratio_clc = args.neg_ratio_clc
+    rs = np.random.RandomState(seed)
+    id = serialize.magic_id(data_path,[pos_ratio,neg_ratio,pos_ratio_clc,neg_ratio_clc,1.0])
+    dataset = serialize.load_dataset(args.data_path)
+    dataset_train,dataset_test_filter = serialize.divide_dataset(dataset,pos_ratio, neg_ratio, rs)
+    analysis_and_train(args.classifier_list,dataset_train,dataset_test_filter,args.nfoldsCV, pos_ratio_clc, neg_ratio_clc,id,rs)
 
 
 

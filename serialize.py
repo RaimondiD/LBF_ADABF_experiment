@@ -21,8 +21,8 @@ def divide_dataset(dataset,pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = 
     other = pd.concat([other_negative, other_positive], axis = 0)
     return train,other
 
-def magic_id(list):
-    result = ""
+def magic_id(data_path,list):
+    result = get_data_name(data_path)
     for el in list:
         result += str(el)
     return result
