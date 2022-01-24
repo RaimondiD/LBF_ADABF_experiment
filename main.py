@@ -42,7 +42,7 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     if(pos_ratio >= 1 or neg_ratio >= 1 or pos_ratio <=0 or neg_ratio <=0 ):
-        raise AssertionError("post_ration and neg_ratio must be > 0 and < 1 ")
+        raise AssertionError("pos_ration and neg_ratio must be > 0 and < 1 ")
     dataset = serialize.load_dataset(data_path)
     dataset_train, other_dataset = serialize.divide_dataset(dataset,pos_ratio,neg_ratio,rs)
     dataset_test_filter, _ = serialize.divide_dataset(other_dataset,0,negTest_ratio,rs)
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         classifier_score_path = serialize.get_path(path_score,Path(id),cl).with_suffix(".csv") 
         classifier_model_path = serialize.get_path(path_classifier, Path(id), cl).with_suffix(".pk1") 
         classifier_score_path_test = serialize.get_path(path_score_test,Path(id),cl).with_suffix(".csv") 
-        classifier_size = os.path.getsize(classifier_model_path) * 8 # getsize restituisce dimensione in byte
+        classifier_size = os.path.getsize(classifier_model_path)
         correct_size_filter = size_filter - classifier_size
         if correct_size_filter < 0:
             print(f"size of classifier {cl} is greater than budget")
