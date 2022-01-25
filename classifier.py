@@ -143,42 +143,43 @@ class MultiLayerPerceptron(tf.keras.Model):
         return out_dense_2
     
 def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
-    id = str(id)
-    try:
-        time_cl = serialize.load_time(id)
-    except:
-        time_cl = {}
+    _, m_list, _ = serialize.get_score_model_path(classifier_list,id)
     if (force_train):
         analysis_and_train(classifier_list,dataset_train,dataset_test_filter,n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
     else:
         train_list = []
-        s_list, m_list, s_test_list = serialize.get_score_model_path(classifier_list,id)
-        for cl,s, m, s_t in zip(classifier_list,s_list,m_list,s_test_list):
+        for cl, m in zip(classifier_list,m_list):
             try:
-                open(s) and open(m) and open(s_t)
+                open(m)
             except:
-                train_list.append(cl)
-            if cl not in train_list and cl not in time_cl:
                 train_list.append(cl)
         if(len(train_list)):
             analysis_and_train(train_list, dataset_train, dataset_test_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
+    save_score(dataset_train,dataset_test_filter, classifier_list, id)
 
-def train_classifiers(X_train, y_train, url, X, y, model_list, name_list, id ,path_test_score):
+def train_classifiers(X_train, y_train, model_list, name_list, id):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
-    path_score_list, path_model_list, path_test_list = serialize.get_score_model_path(name_list, id)
+    _, path_model_list, _ = serialize.get_score_model_path(name_list, id)
+    for model, path_model  in zip(model_list, path_model_list):  
+        model.fit(X_train, y_train)
+        model.save_model(path_model)
+
+def save_score(dataset_train_filter, dataset_test_filter, name_list, id):
+    path_score_list, path_model_list, path_test_list =  serialize.get_score_model_path(name_list,id)
+    X, y, url = separate_data(dataset_train_filter)
     try:
         time_score = serialize.load_time(id)
     except:
         time_score = {}
-    for model, path_score, path_model,path_test, name  in zip(model_list, path_score_list, path_model_list, path_test_list,name_list):  
-        model.fit(X_train, y_train)
+    for name, model_path, score_path, score_test_path in zip(name_list, path_model_list, path_score_list, path_test_list):
+        model = serialize.load_model(model_path)
         start = time.time()
-        serialize.save_score(model, X, y, url, path_score)
+        serialize.save_score(model, X, y, url, score_path)
         end = time.time()
         time_score[name] = (end-start)/len(url)
-        serialize.save_score(model, *separate_data(path_test_score), path_test)
-        model.save_model(path_model)
+        serialize.save_score(model,*separate_data(dataset_test_filter),score_test_path)
     serialize.save_time(id,time_score)
+
 
 def get_classifiers(classifier_list):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
@@ -210,27 +211,48 @@ def get_params_list(classifier_list):
             params_list.append(params_classifier)
     return params_list   
 
+def score_cl(y_score, y_train, classifier_result, name):
+    for metrics_name, metrics_fun in metrics_dict.items():
+        if metrics_name not in classifier_result[name].keys(): 
+            classifier_result[name][metrics_name] = []
+        value = metrics_fun(y_score,y_train)
+        classifier_result[name][metrics_name].append(value)
 
-def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs):
+def avg_cl(classifier_result,name_list):
+    for name in name_list:
+        for metric in metrics_dict:
+            classifier_result[name][metric] = np.average(classifier_result[name][metric])
+        
+
+def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id):
     X = np.array(X)
     y = np.array(y)
     kf = StratifiedKFold(n_splits=n_fold_CV,random_state = rs,shuffle=True)
     result = {}
     max_scores = {}
+    classifier_result = {}
     best_estimators = {}
     for el in names: 
         result[el] = []
         max_scores[el] = 0
+        classifier_result[el] = {}
+
     for train,test in kf.split(X,y):    
         X_train, X_test = X[train], X[test]
         y_train, y_test = y[train], y[test]
         for estimator, params, name in zip(models, params_list, names):
             best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
+            y_score = best_estimator.predict(X_test)
+            score_cl(y_score,y_test, classifier_result, name)
             result[name].append(best_score) 
             if best_score > max_scores[name]:
                 max_scores[name] = best_score
-                best_estimators[name] = best_estimator    
-    print(DataFrame(result))
+                best_estimators[name] = best_estimator 
+    avg_cl(classifier_result,names)
+    serialize.save_classifier_analysis(DataFrame(classifier_result),id,el)
+    print(DataFrame(classifier_result))
+        
+
     return best_estimators
 
 
@@ -246,32 +268,21 @@ def separate_data(dataset):
     return X, y, key
 
 def get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs):
-    dataset = dataset_train
-    X,y,key = separate_data(dataset)
-    data_train, data_test = serialize.divide_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs)
-    X_train, y_train = data_train.iloc[:,1:-1].to_numpy(), data_train.iloc[:,-1].replace(-1,0).to_numpy()
-    X_test, y_test = data_test.iloc[:1:-1].to_numpy(), data_test.iloc[:,-1].replace(-1,0).to_numpy()
-    return X_train, y_train, X_test, y_test, key, X, y
+    dataset_train, _ = serialize.divide_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc, rs)
+    X_train,y_train,_ = separate_data(dataset_train)
+    return X_train, y_train
 
-def analysis_and_train(classifier_list,dataset_train,dataset_test_filter,n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs):
-    X_train, y_train, X_test, y_test, key, X, y = get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs)
+
+
+def analysis_and_train(classifier_list, dataset_train_filter, dataset_test_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):
+    X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc,rs)
     models = get_classifiers(classifier_list)
     params_list = get_params_list(classifier_list)
-    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV,rs)    
+    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV, rs, id)    
     models_to_train = []
-    classifier_result ={}
-    for el, item in best_estimators.items():
+    for _, item in best_estimators.items():
         models_to_train.append(item)
-        if len(X_test):
-            y_score = item.predict(X_test)
-            classifier_result[el]= {}
-            for name,fun in metrics_dict.items():
-                classifier_result[el][name] = fun(y_test,y_score)
-                print(f"{name} : {classifier_result[el][name]}")
-
-            serialize.save_classifier_analysis(DataFrame(classifier_result),id,el)
-
-    train_classifiers(X_train, y_train,key, X, y, models_to_train, classifier_list, id, dataset_test_filter)
+    train_classifiers(X_train, y_train,  models_to_train, classifier_list, id)
 
 
 if __name__ == "__main__":
@@ -292,7 +303,7 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     rs = np.random.RandomState(seed)
-    id = serialize.magic_id(data_path,[pos_ratio,neg_ratio,pos_ratio_clc,neg_ratio_clc,1.0])
+    id = serialize.magic_id(data_path,[seed,pos_ratio,neg_ratio,pos_ratio_clc,neg_ratio_clc])
     dataset = serialize.load_dataset(args.data_path)
     dataset_train,dataset_test_filter = serialize.divide_dataset(dataset,pos_ratio, neg_ratio, rs)
     analysis_and_train(args.classifier_list,dataset_train,dataset_test_filter,args.nfoldsCV, pos_ratio_clc, neg_ratio_clc,id,rs)
