@@ -1,3 +1,4 @@
+from turtle import pos
 import numpy as np
 import pandas as pd
 import argparse
@@ -5,29 +6,42 @@ import time
 import serialize
 from Bloom_filter import BloomFilter
 
+def test_LBF(positive_sample, train_negative, threshold, filter_budget):
+    key = positive_sample.iloc[:, 1][(positive_sample.iloc[:, -1] <= threshold)]
+    n = len(key)
+    bloom_filter = BloomFilter(n, filter_budget)
+    bloom_filter.insert(key)
+    ML_positive = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] > threshold)]
+    bloom_negative = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] <= threshold)]
+    BF_positive = bloom_filter.test(bloom_negative, single_key = False)
+    FP_items = sum(BF_positive) + len(ML_positive)
+
+    return bloom_filter, FP_items
+
 def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_order):
     FP_opt = train_negative.shape[0]
 
     # Calcolo soglie da testare
     train_dataset = np.array(pd.concat([train_negative, positive_sample]).iloc[:, -1]) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
-    print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
+    # print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
+    thresh_median_idx = (len(thresholds_list)-1) // 2
+
+    # Test per selezionare direzione
+    print(f"Soglia sinistra: {thresholds_list[thresh_median_idx - 1]}")
+    bloom_filter_left, fp_items_left = test_LBF(positive_sample, train_negative, thresholds_list[thresh_median_idx - 1], R_sum)
+    bloom_filter_right, fp_items_right = test_LBF(positive_sample, train_negative, thresholds_list[thresh_median_idx + 1], R_sum)
+
+    thresholds_list, FP_opt, bloom_filter_opt, thres_opt = (thresholds_list[:thresh_median_idx], fp_items_left, bloom_filter_left, thresholds_list[thresh_median_idx - 1]) if fp_items_left < fp_items_right else (thresholds_list[thresh_median_idx+1:], fp_items_right, bloom_filter_right, thresholds_list[thresh_median_idx + 1])
 
     for threshold in thresholds_list:
-        query = positive_sample.iloc[:, 1][(positive_sample.iloc[:, -1] <= threshold)]
-        n = len(query)
-        bloom_filter = BloomFilter(n, R_sum)
-        bloom_filter.insert(query)
-        ML_positive = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] > threshold)]
-        bloom_negative = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] <= threshold)]
-        BF_positive = bloom_filter.test(bloom_negative, single_key = False)
-        FP_items = sum(BF_positive) + len(ML_positive)
-
-        print('Threshold: %f, False positive items: %d' %(round(threshold, 2), FP_items))
-        if FP_opt > FP_items:
-            FP_opt = FP_items
-            thres_opt = threshold
-            bloom_filter_opt = bloom_filter
+        bloom_filter, total_false_positive = test_LBF(positive_sample, train_negative, threshold, R_sum)
+        print('Threshold: %f, False positive items: %d' %(round(threshold, 3), total_false_positive))
+        if total_false_positive > FP_opt: # se peggioro rispetto a valore trovato fino ad adesso mi fermo
+            break
+        FP_opt = total_false_positive
+        thres_opt = threshold
+        bloom_filter_opt = bloom_filter
 
     return bloom_filter_opt, thres_opt
 
@@ -49,6 +63,7 @@ def main(data_path, data_path_test, size_filter, others):
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, thresholds_q)
+    return
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
     negative_sample_test = serialize.load_dataset(data_path_test)
