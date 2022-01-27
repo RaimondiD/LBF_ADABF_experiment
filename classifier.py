@@ -40,19 +40,30 @@ def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layers_s
 
 class MyKerasClassifier(KerasClassifier):
     def __init__(self, build_fn=get_MultiLayerPerceprton, **sk_params):
+        self.build_fn = build_fn
         super().__init__(build_fn=build_fn, **sk_params)
 
     def save_model(self,path):
         weights = self.model.get_weights()
-        with open(path, "wb") as file:
-            pickle.dump(weights, file)
+        self.model.save_model(path)
+    
+    def load_model(self,path, data_train_test, data_test_test):
+        weights = serialize.load_model(path)
+        self.fit(data_train_test,data_test_test, verbose = 0)
+        self.model.set_weights(weights)
+        return self
+
+class Sklean_classifier:
+
+    def save_model(self, path):
+        serialize.save_model(self,path)
+
+    def load_model(self, path):
+        return serialize.load_model(path)
 
 
-
-
-class My_Random_Forest(RandomForestClassifier):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class My_Random_Forest(RandomForestClassifier, Sklean_classifier):
+   
     def get_params(self,deep=True):
         true_params = RandomForestClassifier().get_params(deep)
         my_params = self.__dict__
@@ -65,26 +76,22 @@ class My_Random_Forest(RandomForestClassifier):
         for key ,el in params.items():
             self.__dict__[key] = el
         return self
-    def save_model(self, path):
-        serialize.save_model(self,path)
 
-class My_SVM(LinearSVC):
+
+class My_SVM(LinearSVC,Sklean_classifier):
     ''' re-implementazione delle linear SVM fornendo  get_probs, save_score, save_model (da inserire in ogni modello)'''
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
+   
     def get_params(self, deep=True):
         return self.__dict__
     
-    def save_model(self,path):
-        serialize.save_model(self,path)
-
+  
     def predict_proba(self,X):
         coef = self.coef_
         intercept = self.intercept_        
         probs = expit(np.dot(X, coef[0]) + intercept[0])
         return probs
     
+   
 
 def flat(lista):
     ''' nel caso la lista contenga un unico elemento torni quello. il controllo viene fatto ricorsivamente. l'idea è che se ho
@@ -101,7 +108,7 @@ class MultiLayerPerceptron(tf.keras.Model):
         self.epochs = epochs
         self.learning_rate =  learning_rate
         self.hidden_layer_size = hidden_layers_size
-        self.batch_size = None
+        self.batch_size = batch_size
         # Struttura della rete
         self.dense1 = tf.keras.layers.Dense(self.hidden_layer_size, activation = tf.nn.relu)
         self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
@@ -142,6 +149,7 @@ class MultiLayerPerceptron(tf.keras.Model):
         out_dense_2 = self.dense2(out_dense_1)
         return out_dense_2
     
+    
 def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     _, m_list, _ = serialize.get_score_model_path(classifier_list,id)
     if (force_train):
@@ -150,7 +158,7 @@ def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_t
         train_list = []
         for cl, m in zip(classifier_list,m_list):
             try:
-                open(m)
+                serialize.load_model(m)
             except:
                 train_list.append(cl)
         if(len(train_list)):
@@ -166,13 +174,17 @@ def train_classifiers(X_train, y_train, model_list, name_list, id):
 
 def save_score(dataset_train_filter, dataset_test_filter, name_list, id):
     path_score_list, path_model_list, path_test_list =  serialize.get_score_model_path(name_list,id)
+    models = get_classifiers(name_list)
     X, y, url = separate_data(dataset_train_filter)
     try:
         time_score = serialize.load_time(id)
     except:
         time_score = {}
-    for name, model_path, score_path, score_test_path in zip(name_list, path_model_list, path_score_list, path_test_list):
-        model = serialize.load_model(model_path)
+    for name, model, model_path, score_path, score_test_path in zip(name_list, models, path_model_list, path_score_list, path_test_list):
+        if(name == "FFNN"):
+            model.load_model(model_path,X[:2],y[:2])
+        else:
+            model = model.load_model(model_path)
         start = time.time()
         serialize.save_score(model, X, y, url, score_path)
         end = time.time()
@@ -257,7 +269,7 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
 
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1')
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', n_jobs=-1)
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
