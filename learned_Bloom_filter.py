@@ -25,14 +25,14 @@ def Find_Optimal_Parameters(R_sum, train_negative, positive_sample, quantile_ord
     train_dataset = np.array(pd.concat([train_negative, positive_sample]).iloc[:, -1]) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
     # print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
-    thresh_median_idx = (len(thresholds_list)-1) // 2
+    thresh_third_quart_idx = (3 * len(thresholds_list)-1) // 4
 
     # Test per selezionare direzione
-    print(f"Soglia sinistra: {thresholds_list[thresh_median_idx - 1]}")
-    bloom_filter_left, fp_items_left = test_LBF(positive_sample, train_negative, thresholds_list[thresh_median_idx - 1], R_sum)
-    bloom_filter_right, fp_items_right = test_LBF(positive_sample, train_negative, thresholds_list[thresh_median_idx + 1], R_sum)
+    print(f"Soglia sinistra: {thresholds_list[thresh_third_quart_idx - 1]}")
+    bloom_filter_left, fp_items_left = test_LBF(positive_sample, train_negative, thresholds_list[thresh_third_quart_idx - 1], R_sum)
+    bloom_filter_right, fp_items_right = test_LBF(positive_sample, train_negative, thresholds_list[thresh_third_quart_idx + 1], R_sum)
 
-    thresholds_list, FP_opt, bloom_filter_opt, thres_opt = (thresholds_list[:thresh_median_idx], fp_items_left, bloom_filter_left, thresholds_list[thresh_median_idx - 1]) if fp_items_left < fp_items_right else (thresholds_list[thresh_median_idx+1:], fp_items_right, bloom_filter_right, thresholds_list[thresh_median_idx + 1])
+    thresholds_list, FP_opt, bloom_filter_opt, thres_opt = (thresholds_list[:thresh_third_quart_idx], fp_items_left, bloom_filter_left, thresholds_list[thresh_third_quart_idx - 1]) if fp_items_left < fp_items_right else (thresholds_list[thresh_third_quart_idx+1:], fp_items_right, bloom_filter_right, thresholds_list[thresh_third_quart_idx + 1])
 
     for threshold in thresholds_list:
         bloom_filter, total_false_positive = test_LBF(positive_sample, train_negative, threshold, R_sum)
@@ -63,7 +63,6 @@ def main(data_path, data_path_test, size_filter, others):
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     bloom_filter_opt, thres_opt = Find_Optimal_Parameters(R_sum, train_negative, positive_sample, thresholds_q)
-    return
     '''Stage 2: Run LBF on all the samples'''
     ### Test queries
     negative_sample_test = serialize.load_dataset(data_path_test)
