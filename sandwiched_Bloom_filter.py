@@ -60,24 +60,22 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     # Calcolo soglie da testare
     train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
-    thresh_median_idx = (len(thresholds_list)-1) // 2
+    thresh_third_quart_idx = (3 * len(thresholds_list)-1) // 4
     print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
 
     key_B1 = positive_sample
     m = len(positive_sample)
 
     # Test per selezionare direzione
-    B1_left, B2_left, fp_items_left = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_median_idx - 1], b)
-    B1_right, B2_right, fp_items_right = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_median_idx + 1], b)
+    B1_left, B2_left, fp_items_left = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_third_quart_idx - 1], b)
+    B1_right, B2_right, fp_items_right = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_third_quart_idx + 1], b)
 
     # Inizializzo valori ottimi
-    thresholds_list, FP_opt, optimal_B1, optimal_B2, optimal_threshold = (thresholds_list[:thresh_median_idx-1], fp_items_left, B1_left, B2_left, thresholds_list[thresh_median_idx - 1]) if fp_items_left < fp_items_right else (thresholds_list[thresh_median_idx+2:], fp_items_right, B1_right, B2_right, thresholds_list[thresh_median_idx + 1])
+    thresholds_list, FP_opt, optimal_B1, optimal_B2, optimal_threshold = (thresholds_list[:thresh_third_quart_idx-1], fp_items_left, B1_left, B2_left, thresholds_list[thresh_third_quart_idx - 1]) if fp_items_left < fp_items_right else (thresholds_list[thresh_third_quart_idx+2:], fp_items_right, B1_right, B2_right, thresholds_list[thresh_third_quart_idx + 1])
 
     for threshold in thresholds_list:
         B1, B2, total_false_positive = test_SLBF(positive_sample, m, train_negative, threshold, b)
         print('Threshold: %f, False positive items: %d' %(round(threshold, 3), total_false_positive))
-        if total_false_positive == -2: continue
-        if total_false_positive == -1: break
         if total_false_positive > FP_opt: # se peggioro rispetto a valore trovato fino ad adesso mi fermo
             break
         FP_opt = total_false_positive
