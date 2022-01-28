@@ -1,4 +1,5 @@
 from bdb import effective
+from nturl2path import pathname2url
 from matplotlib.pyplot import axis
 import numpy as np
 import argparse
@@ -45,11 +46,11 @@ class MyKerasClassifier(KerasClassifier):
 
     def save_model(self,path):
         weights = self.model.get_weights()
-        self.model.save_model(path)
-    
+        serialize.save_model(weights,path)
+
     def load_model(self,path, data_train_test, data_test_test):
         weights = serialize.load_model(path)
-        self.fit(data_train_test,data_test_test, verbose = 0)
+        self.fit(data_train_test,data_test_test) #necessario per caricare il modello (sono in un wrapper) 
         self.model.set_weights(weights)
         return self
 
@@ -242,12 +243,12 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
     kf = StratifiedKFold(n_splits=n_fold_CV,random_state = rs,shuffle=True)
     result = {}
     max_scores = {}
-    classifier_result = {}
+    classifiers_result = {}
     best_estimators = {}
     for el in names: 
         result[el] = []
         max_scores[el] = 0
-        classifier_result[el] = {}
+        classifiers_result[el] = {}
 
     for train,test in kf.split(X,y):    
         X_train, X_test = X[train], X[test]
@@ -255,14 +256,16 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         for estimator, params, name in zip(models, params_list, names):
             best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
             y_score = best_estimator.predict(X_test)
-            score_cl(y_score,y_test, classifier_result, name)
+            score_cl(y_score,y_test, classifiers_result, name)
             result[name].append(best_score) 
             if best_score > max_scores[name]:
                 max_scores[name] = best_score
                 best_estimators[name] = best_estimator 
-    avg_cl(classifier_result,names)
-    serialize.save_classifier_analysis(DataFrame(classifier_result),id,el)
-    print(DataFrame(classifier_result))
+    avg_cl(classifiers_result,names)
+    for el in names:
+        classifier_result = DataFrame(classifiers_result[el],index=[el])
+        serialize.save_classifier_analysis(classifier_result,id,el)
+        print(classifier_result)
         
 
     return best_estimators
