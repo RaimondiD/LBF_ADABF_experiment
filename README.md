@@ -18,7 +18,7 @@ Grid:
 - `--data_path`: a csv file includes the items and labels; 
 - `--size_of_filter`: size of the entire structure (classifier + filter);
 - `--classifier_list`: list of classifier that will be used in the learned filter (RF -> random forest, SVM -> linear support vector machine, FFNN -> multi-strate perceptron).
-- `--nfoldCV` : number of fold used in CV; default is 5.
+- `--nfoldsCV` : number of fold used in CV; default is 5.
 - `--force_train`: force training of all classifiers specified in classifier list. if the argument isn't provided only classifier without a saved model and score are trained.
 - `--type_filter` : specify the type of filter (learned bloom filter, sandwiched learned bloom filter o Ada-BF).
 - (for LBF and SLBF) 
