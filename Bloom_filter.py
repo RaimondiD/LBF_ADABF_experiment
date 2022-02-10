@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 from sklearn.utils import murmurhash3_32
-from random import randint
+import random
 import serialize
 import argparse
 
 
 
 def hashfunc(m):
-    ss = randint(1, 99999999)
+    ss = random.randint(1, 99999999)
     def hash_m(x):
         return murmurhash3_32(x,seed=ss)%m
     return hash_m
@@ -80,26 +80,27 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True, help="path of the dataset")
     parser.add_argument('--size_of_BF', action="store", dest="R_sum", type=int, required=True, help="size of the BF")
-    parser.add_argument('--pos_ratio', action="store", dest="pos_ratio", type=float, required=True, help="size of the BF")
-    parser.add_argument('--neg_ratio', action="store", dest="neg_ratio", type=float, required=True, help="size of the BF")
+    parser.add_argument('--pos_ratio', action="store", dest="pos_ratio", type=float, required=True, help="size of the BF", default = 0.7)
+    parser.add_argument('--neg_ratio', action="store", dest="neg_ratio", type=float, required=True, help="size of the BF", default = 0.7)
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
-
+    seed= 22012022
+    rs = np.random.RandomState(seed)
+    random.seed(seed)
     results = parser.parse_args()
     DATA_PATH = results.data_path
     R_sum = results.R_sum
     pos_ratio = results.pos_ratio
     neg_ratio = results.neg_ratio
     negTest_ratio = results.negTest_ratio
-
-    data = serialize.load_dataset(DATA_PATH, pos_ratio = pos_ratio, neg_ratio = neg_ratio, pos_label = 1, neg_label = 0)
+    dataset = serialize.load_dataset(DATA_PATH)
+    data,other = serialize.divide_dataset(dataset, pos_ratio,neg_ratio,rs)
+    query_negative, _ = serialize.divide_dataset(other, 0, negTest_ratio, rs)
 
     negative_sample = data.loc[(data['label'] == -1)]
     positive_sample = data.loc[(data['label'] == 1)]
-    print(positive_sample)
     query = positive_sample['url']
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
-    query_negative = negative_sample.sample(frac = negTest_ratio, random_state = 42)
     n1 = bloom_filter.test(query_negative, single_key=False)
-    print('False positive items: ', sum(n1))
+    print('False positive rate: ', sum(n1)/n)
