@@ -42,6 +42,7 @@ def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layers_s
 class MyKerasClassifier(KerasClassifier):
     def __init__(self, build_fn=get_MultiLayerPerceprton, **sk_params):
         self.build_fn = build_fn
+        self.hidden_layer = sk_params['hidden_layers_size']
         super().__init__(build_fn=build_fn, **sk_params)
 
     def save_model(self,path):
@@ -53,6 +54,8 @@ class MyKerasClassifier(KerasClassifier):
         self.fit(data_train_test,data_test_test) #necessario per caricare il modello (sono in un wrapper) 
         self.model.set_weights(weights)
         return self
+    def __str__(self):
+        return "FFNN" + str(self.hidden_layer)
 
 class Sklean_classifier:
 
@@ -77,11 +80,15 @@ class My_Random_Forest(RandomForestClassifier, Sklean_classifier):
         for key ,el in params.items():
             self.__dict__[key] = el
         return self
+    
+    def __str__(self):
+        return "RF" + str(self.n_estimators)
+
 
 
 class My_SVM(LinearSVC,Sklean_classifier):
     ''' re-implementazione delle linear SVM fornendo  get_probs, save_score, save_model (da inserire in ogni modello)'''
-   
+    
     def get_params(self, deep=True):
         return self.__dict__
     
@@ -92,7 +99,9 @@ class My_SVM(LinearSVC,Sklean_classifier):
         probs = expit(np.dot(X, coef[0]) + intercept[0])
         return probs
     
-   
+    def __str__(self) -> str:
+        return "SVM"
+
 
 def flat(lista):
     ''' nel caso la lista contenga un unico elemento torni quello. il controllo viene fatto ricorsivamente. l'idea è che se ho
@@ -272,7 +281,7 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
 
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', n_jobs=-1)
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1')
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
@@ -293,6 +302,7 @@ def analysis_and_train(classifier_list, dataset_train_filter, dataset_test_filte
     X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc,rs)
     models = get_classifiers(classifier_list)
     params_list = get_params_list(classifier_list)
+    classifier_list = list(map(lambda x : str(x), models))
     best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV, rs, id)    
     models_to_train = []
     for _, item in best_estimators.items():

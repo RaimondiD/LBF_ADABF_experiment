@@ -4,6 +4,7 @@ import pandas as pd
 import pickle 
 import os
 import numpy as np
+import lzma
 from pathlib import Path
 result_path = Path("results/")
 path_classifier = Path("models/")
@@ -52,7 +53,7 @@ def save_results(dict, filter_name):
 
 def load_model(path):
     path = get_model_path(path)
-    with open(path,"rb") as model_file:
+    with lzma.open(path,"rb") as model_file:
         model = pickle.load(model_file)
     return model
 
@@ -66,7 +67,7 @@ def save_classifier_analysis(dict,id,classifier):
 def save_model(model, save_path):
     '''salva i modelli'''
     save_path = get_model_path(save_path)
-    with open(save_path,'wb') as file:
+    with lzma.open(save_path,'wb') as file:
             pickle.dump(model,file)
     size = os.path.getsize(save_path)
     return size
