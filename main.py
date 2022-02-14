@@ -8,6 +8,8 @@ import serialize
 import os
 import numpy as np
 from pathlib import Path
+import psutil
+
 
 path_score = serialize.path_score
 path_score_test = serialize.path_score_test
@@ -31,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 0.7)
     parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 0.7)
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
+
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
     classifier_list = args.classifier_list
@@ -43,13 +46,18 @@ if __name__ == "__main__":
     neg_ratio_clc = args.neg_ratio_clc
     if(pos_ratio >= 1 or neg_ratio >= 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and < 1 ")
-    dataset = serialize.load_dataset(data_path)
+
+    dataset = serialize.load_dataset(data_path, dtype = np.int8)
+    print(len(dataset.index))
     dataset_train, other_dataset = serialize.divide_dataset(dataset,pos_ratio,neg_ratio,rs)
     dataset_test_filter, _ = serialize.divide_dataset(other_dataset, 0, negTest_ratio, rs)
+    print(len(dataset_train.index), len(dataset_test_filter.index))
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
+    
     classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list, args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs)
     structure_dict = {}
     cl_time = serialize.load_time(id)
+
     for i,cl in enumerate(classifier_list):
         classifier_score_path = serialize.get_path(path_score,Path(id),cl).with_suffix(".csv") 
         classifier_model_path = serialize.get_path(path_classifier, Path(id), cl).with_suffix(".pk1") 
@@ -68,4 +76,6 @@ if __name__ == "__main__":
         results = DataFrame(structure_dict)
         print(results)
         serialize.save_results(results,type_filter)
+
+
 

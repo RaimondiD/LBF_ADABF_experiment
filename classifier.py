@@ -20,6 +20,7 @@ from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
 from pathlib import Path
+from itertools import product
 
 
 config_path = Path("models/classifier_conf.json")
@@ -55,7 +56,6 @@ class MyKerasClassifier(KerasClassifier):
         return self
 
 class Sklean_classifier:
-
     def save_model(self, path):
         serialize.save_model(self,path)
 
@@ -103,16 +103,18 @@ def flat(lista):
                 
 
 class MultiLayerPerceptron(tf.keras.Model):
-    def __init__(self, epochs = 5 , learning_rate = 1e-3, hidden_layers_size = 20, batch_size = None):
+    def __init__(self, epochs = 5 , learning_rate = 1e-3, hidden_layers_size = [20], batch_size = None):
         super().__init__()
         # Parametri da confbest_score
         self.epochs = epochs
         self.learning_rate =  learning_rate
-        self.hidden_layer_size = hidden_layers_size
+        self.hidden_layers_size = hidden_layers_size
         self.batch_size = batch_size
         # Struttura della rete
-        self.dense1 = tf.keras.layers.Dense(self.hidden_layer_size, activation = tf.nn.relu)
-        self.dense2 = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
+        self.dense_layers = []
+        for neurons in self.hidden_layers_size:
+            self.dense_layers.append(tf.keras.layers.Dense(neurons, activation = tf.nn.relu)) 
+        self.out_dense = tf.keras.layers.Dense(1, activation = tf.nn.sigmoid)
         # Compile
         self.compile(
             optimizer = tf.optimizers.Adam(self.learning_rate), 
@@ -146,9 +148,12 @@ class MultiLayerPerceptron(tf.keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     def call(self, inputs):
-        out_dense_1 = self.dense1(inputs)
-        out_dense_2 = self.dense2(out_dense_1)
-        return out_dense_2
+        hidden_dense_out = self.dense_layers[0](inputs)
+        for layer in self.dense_layers[1:]:
+            hidden_dense_out = layer(hidden_dense_out)
+        output_dense_out = self.out_dense(hidden_dense_out)
+
+        return output_dense_out
     
     
 def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
@@ -193,6 +198,24 @@ def save_score(dataset_train_filter, dataset_test_filter, name_list, id):
         serialize.save_score(model,*separate_data(dataset_test_filter),score_test_path)
     serialize.save_time(id,time_score)
 
+'''
+def get_hyperparameters_confs(classifier_list):
+    Legge il file classifier_conf.json e restituisce tutte le combinazioni di iperparametri necessarie per ciascuno dei modelli.
+    hyperpars_list = {cl : [] for cl in classifier_list}
+
+    with open(config_path,"r") as file:
+        data = json.load(file)
+        cl_list = classifier_list
+        cl_dict = {key : data[key] for key in cl_list}
+
+    for cl, cl_hyperpars in cl_dict.items(): # iterazione su tutti i dizionari degli iperparametri di ogni clc
+        hyperpar_combinations = list(product(*[value for value in cl_hyperpars.values()]))
+        for hp_combination in hyperpar_combinations:
+            hyperpar_conf = {key : value for key, value in zip(cl_hyperpars.keys(), hp_combination)}
+            hyperpars_list[cl].append(hyperpar_conf)
+
+    return hyperpars_list
+'''
 
 def get_classifiers(classifier_list):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
@@ -203,7 +226,6 @@ def get_classifiers(classifier_list):
         cl_dict = {key : data[key] for key in cl_list}
     train_list =  [classifier_fun[key]()(**kwargs) for key, kwargs in cl_dict.items()] 
     return train_list
-
 
 def get_params_list(classifier_list):
     params_list = []
@@ -236,11 +258,10 @@ def avg_cl(classifier_result,name_list):
         for metric in metrics_dict:
             classifier_result[name][metric] = np.average(classifier_result[name][metric])
         
-
 def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id):
     X = np.array(X)
     y = np.array(y)
-    kf = StratifiedKFold(n_splits=n_fold_CV,random_state = rs,shuffle=True)
+    kf = StratifiedKFold(n_splits = n_fold_CV, random_state = rs,shuffle = True)
     result = {}
     max_scores = {}
     classifiers_result = {}
@@ -266,13 +287,11 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         classifier_result = DataFrame(classifiers_result[el],index=[el])
         serialize.save_classifier_analysis(classifier_result,id,el)
         print(classifier_result)
-        
 
     return best_estimators
 
-
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', n_jobs=-1)
+    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1', n_jobs = 1)
     grid_obj.fit(X_train,y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
@@ -286,8 +305,6 @@ def get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs):
     dataset_train, _ = serialize.divide_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc, rs)
     X_train,y_train,_ = separate_data(dataset_train)
     return X_train, y_train
-
-
 
 def analysis_and_train(classifier_list, dataset_train_filter, dataset_test_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):
     X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc,rs)
