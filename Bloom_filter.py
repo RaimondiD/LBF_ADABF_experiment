@@ -96,9 +96,9 @@ if __name__ == '__main__':
     data,other = serialize.divide_dataset(dataset, pos_ratio,neg_ratio,rs)
     query_negative, _ = serialize.divide_dataset(other, 0, negTest_ratio, rs)
 
-    negative_sample = data.loc[(data['label'] == -1)]
-    positive_sample = data.loc[(data['label'] == 1)]
-    query = positive_sample['url']
+    negative_sample = data.loc[(data.iloc[:,-1] == -1)]
+    positive_sample = data.loc[(data.iloc[:,-1] == 1)]
+    query = positive_sample.iloc[:,0]
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
