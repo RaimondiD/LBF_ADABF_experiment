@@ -62,14 +62,16 @@ def save_classifier_analysis(dict,id,classifier):
     data_name = Path(id)
     dest_dir = result_path / data_name 
     dest_dir.mkdir(parents= True, exist_ok = True)
-    dict.to_csv(dest_dir / Path(classifier + "_score"))
+    dict.to_csv(dest_dir / Path(classifier + "_score.csv"))
 
-def save_model(model, save_path):
+def save_model(model, save_path, not_serialize = False):
     '''salva i modelli'''
     save_path = get_model_path(save_path)
     with lzma.open(save_path,'wb') as file:
             pickle.dump(model,file)
-    size = os.path.getsize(save_path)
+    size = os.path.getsize(save_path) 
+    if(not_serialize):
+        os.remove(save_path)
     return size
 
 def get_model_path(path):

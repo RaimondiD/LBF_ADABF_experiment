@@ -12,7 +12,7 @@ import math
 import pandas as pd
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_auc_score, average_precision_score, f1_score,accuracy_score
+from sklearn.metrics import recall_score, roc_auc_score, average_precision_score, f1_score,accuracy_score, precision_score
 from numpy import ndarray
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split
@@ -27,10 +27,14 @@ params_path = Path("models/params_grid_search.json")
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
                    "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                    "FFNN": lambda: MyKerasClassifier}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
-metrics_dict = {"ROC" : roc_auc_score, 
-        "average_precision_score" : average_precision_score,
+metrics_dict = {"accuracy" : accuracy_score,
+        "precision" : precision_score,
+        "recall" : recall_score,
         "f1-score" : f1_score,
-        "accuracy" : accuracy_score}
+        "ROC" : roc_auc_score, 
+        "average_precision_score" : average_precision_score,
+
+}
 #def take_Multi_Layer(epochs = 5, learning_rate = 1e-3, hidden_layer_size = 20):
 #    return KerasClassifier(build_fn = get_MultiLayerPerceprton, _epochs= epochs, learning_rate = learning_rate, hidden_layer_size = hidden_layer_size)
 
@@ -38,16 +42,27 @@ metrics_dict = {"ROC" : roc_auc_score,
 def get_MultiLayerPerceprton(_epochs = 5, learning_rate = 1e-3 , hidden_layers_size = 20, _batch_size = None):
     return MultiLayerPerceptron(epochs = _epochs, learning_rate= learning_rate, hidden_layers_size= hidden_layers_size, batch_size = _batch_size)
 
+class Sklearn_classifier:
 
-class MyKerasClassifier(KerasClassifier):
+    def save_model(self, path,not_serialize = False):
+        return serialize.save_model(self,path,not_serialize)
+
+    def load_model(self, path):
+        return serialize.load_model(path)
+    
+    def get_size(self):
+        return self.save_model("a",True)
+
+
+class MyKerasClassifier(KerasClassifier,Sklearn_classifier):
     def __init__(self, build_fn=get_MultiLayerPerceprton, **sk_params):
         self.build_fn = build_fn
         self.hidden_layer = sk_params['hidden_layers_size']
         super().__init__(build_fn=build_fn, **sk_params)
 
-    def save_model(self,path):
+    def save_model(self,path,not_serialize = False):
         weights = self.model.get_weights()
-        serialize.save_model(weights,path)
+        return serialize.save_model(weights,path, not_serialize)
 
     def load_model(self,path, data_train_test, data_test_test):
         weights = serialize.load_model(path)
@@ -57,16 +72,9 @@ class MyKerasClassifier(KerasClassifier):
     def __str__(self):
         return "FFNN" + str(self.hidden_layer)
 
-class Sklean_classifier:
-
-    def save_model(self, path):
-        serialize.save_model(self,path)
-
-    def load_model(self, path):
-        return serialize.load_model(path)
 
 
-class My_Random_Forest(RandomForestClassifier, Sklean_classifier):
+class My_Random_Forest(RandomForestClassifier, Sklearn_classifier):
    
     def get_params(self,deep=True):
         true_params = RandomForestClassifier().get_params(deep)
@@ -86,7 +94,7 @@ class My_Random_Forest(RandomForestClassifier, Sklean_classifier):
 
 
 
-class My_SVM(LinearSVC,Sklean_classifier):
+class My_SVM(LinearSVC,Sklearn_classifier):
     ''' re-implementazione delle linear SVM fornendo  get_probs, save_score, save_model (da inserire in ogni modello)'''
     
     def get_params(self, deep=True):
@@ -233,12 +241,14 @@ def get_params_list(classifier_list):
             params_list.append(params_classifier)
     return params_list   
 
-def score_cl(y_score, y_train, classifier_result, name):
+def score_cl(y_score, y_train, classifier_result, name, size, time):
     for metrics_name, metrics_fun in metrics_dict.items():
         if metrics_name not in classifier_result[name].keys(): 
             classifier_result[name][metrics_name] = []
         value = metrics_fun(y_score,y_train)
         classifier_result[name][metrics_name].append(value)
+    classifier_result[name]["model_size"] = size
+    classifier_result[name]["avg_predtime"] = time
 
 def avg_cl(classifier_result,name_list):
     for name in name_list:
@@ -264,8 +274,11 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         y_train, y_test = y[train], y[test]
         for estimator, params, name in zip(models, params_list, names):
             best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
+            t_start = time.time()
             y_score = best_estimator.predict(X_test)
-            score_cl(y_score,y_test, classifiers_result, name)
+            t_end = time.time()
+            avg_time = (t_start - t_end)/len(X_test)
+            score_cl(y_score,y_test, classifiers_result, name, best_estimator.get_size(), avg_time)
             result[name].append(best_score) 
             if best_score > max_scores[name]:
                 max_scores[name] = best_score
@@ -275,7 +288,8 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         classifier_result = DataFrame(classifiers_result[el],index=[el])
         serialize.save_classifier_analysis(classifier_result,id,el)
         print(classifier_result)
-        
+    total = DataFrame.from_dict(classifiers_result,orient="index")
+    serialize.save_classifier_analysis(total,id,"total")
 
     return best_estimators
 
