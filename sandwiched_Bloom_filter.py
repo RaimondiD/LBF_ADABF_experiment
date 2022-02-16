@@ -9,40 +9,6 @@ from Bloom_filter import BloomFilter
 
 
 def test_SLBF(positive_sample, positive_sample_len, train_negative, threshold, filter_budget):
-    ML_false_positive = (train_negative.iloc[:, -1] > threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
-    ML_true_negative = (train_negative.iloc[:, -1] <= threshold) # maschera veri negativi generati dal modello rispetto alla soglia considerata
-    ML_false_negative = (positive_sample.iloc[:, -1] <= threshold) # maschera falsi negativi generati dal modello rispetto alla soglia considerata
-
-    FP = (train_negative[ML_false_positive].iloc[:, 1].size) / train_negative.iloc[:, 1].size # stima probabilità di un falso positivo dal modello
-    FN = (positive_sample[ML_false_negative].iloc[:, 1].size) / positive_sample.iloc[:, 1].size # stima probabilità di un falso negativo dal modello
-    if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): return # da cambiare
-
-    b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
-    b1 = filter_budget - b2
-    if b1 <= 0: # Non serve avere SLBF
-        print("b1 = 0")
-        return
-    
-    print(f"FP: {FP}, FN: {FN}, b: {filter_budget}, b1: {b1}, b2: {b2}")
-    
-    # Creazione filtro iniziale
-    B1 = BloomFilter(positive_sample_len, b1*positive_sample_len)
-    B1.insert(positive_sample.iloc[:, 1])
-    # Creazione filtro backup
-    key_b2 = positive_sample[ML_false_negative].iloc[:, 1]
-    B2 = BloomFilter(len(key_b2), b2*positive_sample_len)
-    B2.insert(key_b2)
-    # Calcolo FPR
-    B1_false_positive = B1.test(train_negative.iloc[:, 1], single_key = False)
-    ML_false_positive_list = train_negative.iloc[:, 1][(B1_false_positive) & (ML_false_positive)]
-    ML_true_negative_list = train_negative.iloc[:, 1][(B1_false_positive) & (ML_true_negative)]
-    B2_false_positive = B2.test(ML_true_negative_list, single_key = False)
-    total_false_positive = sum(B2_false_positive) + len(ML_false_positive_list)
-    
-    return B1, B2, total_false_positive
-
-
-def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order = 10):
     '''
     B1 = Initial Bloom filter
     B2 = Backup Bloom filter
@@ -53,6 +19,39 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     b1* = b - b2*                                       Taglia filtro iniziale
     Dove FP indica il tasso di falsi positivi del classificatore su un insieme di non chiavi, e FN il tasso di falsi negativi del classificatore.
     '''
+    ml_false_positive = (train_negative.iloc[:, -1] > threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
+    ml_true_negative = (train_negative.iloc[:, -1] <= threshold) # maschera veri negativi generati dal modello rispetto alla soglia considerata
+    ml_false_negative = (positive_sample.iloc[:, -1] <= threshold) # maschera falsi negativi generati dal modello rispetto alla soglia considerata
+
+    FP = (train_negative[ml_false_positive].iloc[:, 1].size) / train_negative.iloc[:, 1].size # stima probabilità di un falso positivo dal modello
+    FN = (positive_sample[ml_false_negative].iloc[:, 1].size) / positive_sample.iloc[:, 1].size # stima probabilità di un falso negativo dal modello
+    if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): return (0, 0, -1) # da cambiare
+
+    b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
+    b1 = filter_budget - b2
+    if b1 <= 0: # Non serve avere SLBF
+        print("b1 = 0")
+        return (0, 0, positive_sample_len+1)
+    
+    print(f"FP: {FP}, FN: {FN}, b: {filter_budget}, b1: {b1}, b2: {b2}")
+    
+    # Creazione filtro iniziale
+    B1 = BloomFilter(positive_sample_len, b1*positive_sample_len)
+    B1.insert(positive_sample.iloc[:, 1])
+    # Creazione filtro backup
+    key_b2 = positive_sample[ml_false_negative].iloc[:, 1]
+    B2 = BloomFilter(len(key_b2), b2*positive_sample_len)
+    B2.insert(key_b2)
+    # Calcolo FPR
+    B1_false_positive = B1.test(train_negative.iloc[:, 1], single_key = False)
+    ml_false_positive_list = train_negative.iloc[:, 1][(B1_false_positive) & (ml_false_positive)]
+    ml_true_negative_list = train_negative.iloc[:, 1][(B1_false_positive) & (ml_true_negative)]
+    B2_false_positive = B2.test(ml_true_negative_list, single_key = False)
+    total_false_positive = sum(B2_false_positive) + len(ml_false_positive_list)
+    
+    return B1, B2, total_false_positive
+
+def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order = 10):
     if b < 1: 
         print("err")
         return 
@@ -61,13 +60,15 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
     thresh_third_quart_idx = (3 * len(thresholds_list)-1) // 4
-    print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
+    # print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
 
     key_B1 = positive_sample
     m = len(positive_sample)
 
     # Test per selezionare direzione
+    print("Soglia sinistra")
     B1_left, B2_left, fp_items_left = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_third_quart_idx - 1], b)
+    print("Soglia destra")
     B1_right, B2_right, fp_items_right = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_third_quart_idx + 1], b)
 
     # Inizializzo valori ottimi
@@ -76,12 +77,13 @@ def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order =
     for threshold in thresholds_list:
         B1, B2, total_false_positive = test_SLBF(positive_sample, m, train_negative, threshold, b)
         print('Threshold: %f, False positive items: %d' %(round(threshold, 3), total_false_positive))
-        if total_false_positive > FP_opt: # se peggioro rispetto a valore trovato fino ad adesso mi fermo
-            break
-        FP_opt = total_false_positive
-        optimal_threshold = threshold
-        optimal_B1 = B1
-        optimal_B2 = B2
+        if total_false_positive == -1: continue
+        elif total_false_positive > FP_opt: break # se peggioro rispetto a valore trovato fino ad adesso mi fermo (include anche caso b1 = 0)
+        else:
+            FP_opt = total_false_positive
+            optimal_threshold = threshold
+            optimal_B1 = B1
+            optimal_B2 = B2
 
     return optimal_B1, optimal_B2, optimal_threshold
     

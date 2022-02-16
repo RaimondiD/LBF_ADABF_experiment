@@ -1,25 +1,41 @@
-from genericpath import exists
-import ntpath
 import pandas as pd
 import pickle 
 import os
 import numpy as np
 import lzma
+from dataclasses import replace
+from genericpath import exists
 from pathlib import Path
+import classifier
+
 result_path = Path("results/")
 path_classifier = Path("models/")
 path_score = Path("score_classifier/")
 path_score_test = Path("score_classifier_test/")
 
-def divide_dataset(dataset,pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
+def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
-    negative_samples_train = negative.sample(frac = neg_ratio,random_state = rs)
-    positive_samples_train = positive.sample(frac = pos_ratio, random_state = rs)
-    other_negative = negative[~negative.isin(negative_samples_train)].dropna()
-    other_positive = positive[~positive.isin(positive_samples_train)].dropna()
-    train = pd.concat([negative_samples_train, positive_samples_train], axis = 0)
-    other = pd.concat([other_negative, other_positive], axis = 0)
+    neg_len, pos_len = len(negative), len(positive)
+
+    # Generazione degli indici
+    negative_samples_train_idx = np.random.choice(range(neg_len), replace = False, size = int(neg_len * neg_ratio)) # random state?
+    positive_samples_train_idx = np.random.choice(range(pos_len), replace = False, size = int(pos_len * pos_ratio))
+    negative_other_idx = np.setdiff1d(np.arange(0, neg_len), negative_samples_train_idx)
+    positive_other_idx = np.setdiff1d(np.arange(0, pos_len), positive_samples_train_idx)
+
+    # Divisione dataset
+    negative_samples_train = negative.iloc[negative_samples_train_idx, :]
+    positive_samples_train = positive.iloc[positive_samples_train_idx, :]
+    other_negative = negative.iloc[negative_other_idx, :]
+    other_positive = positive.iloc[positive_other_idx, :]
+
+    # Concatenazione
+    train = pd.concat([negative_samples_train, positive_samples_train], axis = 0, ignore_index = True)
+    other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
+
+    train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
+
     return train,other
 
 def magic_id(data_path,list):
@@ -28,9 +44,12 @@ def magic_id(data_path,list):
         result += str(el)
     return result
 
-def load_dataset(path):
-    dataset = pd.read_csv(path)
-    return dataset
+def load_dataset(path, dtype = None):
+    # ds_name = Path(path).parts[-1].split('_')[0]
+    # data_csv = pd.read_csv(path / f'{ds_name}_data.csv', dtype = str)
+    # feat_pluslabels_csv = pd.read_csv(path / f'{ds_name}_featLabels.csv', dtype = np.int8)
+    data = pd.read_csv(path, dtype = dtype, converters = {'url' : str}) # converter da cambiare in base a nome colonna con i dati
+    return data
 
 def load_time(data_path):
     total_path = get_time_path(data_path)
@@ -56,7 +75,6 @@ def load_model(path):
     with lzma.open(path,"rb") as model_file:
         model = pickle.load(model_file)
     return model
-
 
 def save_classifier_analysis(dict,id,classifier):
     data_name = Path(id)
@@ -99,7 +117,7 @@ def get_data_name(data_path):
 def get_path(dir_path, data_name, classifier):
     return dir_path / data_name / classifier 
 
-def get_list_path(dir_path,data_name,list, suffix = None):
+def get_list_path(dir_path, data_name, list,  suffix = None):
     if suffix:
         return [get_path(dir_path,data_name,key).with_suffix(suffix) for key in list]
     return [get_path(dir_path,data_name,key) for key in list]
