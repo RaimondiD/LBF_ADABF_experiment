@@ -214,7 +214,8 @@ def save_score(dataset_train_filter, dataset_test_filter, name_list, id):
         serialize.save_score(model, X, y, url, score_path)
         end = time.time()
         time_score[name] = (end-start)/len(url)
-        serialize.save_score(model,*separate_data(dataset_test_filter),score_test_path)
+        if(not(dataset_test_filter.empty)):
+            serialize.save_score(model,*separate_data(dataset_test_filter),score_test_path)
     serialize.save_time(id,time_score)
 
 '''
