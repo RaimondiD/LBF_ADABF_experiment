@@ -8,7 +8,6 @@ import serialize
 import os
 import numpy as np
 from pathlib import Path
-import psutil
 
 
 path_score = serialize.path_score
@@ -54,14 +53,13 @@ if __name__ == "__main__":
     print(len(dataset_train.index), len(dataset_test_filter.index))
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
     
-    classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list, args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs)
+    classifier_scores_path, classifier_models_path, classifier_scores_path_test = \
+        classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list,\
+        args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs)
     structure_dict = {}
     cl_time = serialize.load_time(id)
 
-    for i,cl in enumerate(classifier_list):
-        classifier_score_path = serialize.get_path(path_score,Path(id),cl).with_suffix(".csv") 
-        classifier_model_path = serialize.get_path(path_classifier, Path(id), cl).with_suffix(".pk1") 
-        classifier_score_path_test = serialize.get_path(path_score_test,Path(id),cl).with_suffix(".csv") 
+    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list):
         classifier_size = os.path.getsize(classifier_model_path)
         correct_size_filter = size_filter - classifier_size
         if correct_size_filter < 0:
