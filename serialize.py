@@ -17,10 +17,10 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
     neg_len, pos_len = len(negative), len(positive)
-
+    
     # Generazione degli indici
-    negative_samples_train_idx = np.random.choice(range(neg_len), replace = False, size = int(neg_len * neg_ratio)) # random state?
-    positive_samples_train_idx = np.random.choice(range(pos_len), replace = False, size = int(pos_len * pos_ratio))
+    negative_samples_train_idx = rs.choice(range(neg_len), replace = False, size = int(neg_len * neg_ratio)) # random state?
+    positive_samples_train_idx = rs.choice(range(pos_len), replace = False, size = int(pos_len * pos_ratio))
     negative_other_idx = np.setdiff1d(np.arange(0, neg_len), negative_samples_train_idx)
     positive_other_idx = np.setdiff1d(np.arange(0, pos_len), positive_samples_train_idx)
 
@@ -35,7 +35,6 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
 
     train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
-
     return train,other
 
 def magic_id(data_path,list):
@@ -68,7 +67,7 @@ def get_time_path(id):
 
 def save_results(dict, filter_name):
     result_path.mkdir(parents = True, exist_ok = True)
-    dict.to_csv(result_path / filter_name)
+    dict.to_csv(result_path / (filter_name + ".csv"))
 
 def load_model(path):
     path = get_model_path(path)
