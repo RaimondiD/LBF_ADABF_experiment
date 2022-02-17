@@ -1,93 +1,91 @@
 from operator import pos
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import argparse
 import math
-import time
 import serialize
+import pickle
 from Bloom_filter import BloomFilter
 
+class SLBF:
+    def __init__(self, keys, filter_size_b1, filter_size_b2, threshold):
+        '''
+        keys: array nella forma
+            data    score
+        '''
+        self.filter_size_b1 = filter_size_b1
+        self.filter_size_b2 = filter_size_b2
+        self.threshold = threshold
 
-def test_SLBF(positive_sample, positive_sample_len, train_negative, threshold, filter_budget):
-    '''
-    B1 = Initial Bloom filter
-    B2 = Backup Bloom filter
-    m = |K|
-    
-    Assumendo di avere b*m budget bits
-    b2* = FN log_alpha( FP/( (1-FP)*(1\(FN - 1)) ) )    Taglia filtro di backup
-    b1* = b - b2*                                       Taglia filtro iniziale
-    Dove FP indica il tasso di falsi positivi del classificatore su un insieme di non chiavi, e FN il tasso di falsi negativi del classificatore.
-    '''
-    ml_false_positive = (train_negative.iloc[:, -1] > threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
-    ml_true_negative = (train_negative.iloc[:, -1] <= threshold) # maschera veri negativi generati dal modello rispetto alla soglia considerata
-    ml_false_negative = (positive_sample.iloc[:, -1] <= threshold) # maschera falsi negativi generati dal modello rispetto alla soglia considerata
+        self.initial_keys = keys
+        self.initial_bf = BloomFilter(len(self.initial_keys), filter_size_b1 * len(self.initial_keys)) #salvare len prima
+        self.initial_bf.insert(self.initial_keys.iloc[:, 1])
+        self.backup_keys = keys[(keys.iloc[:, -1] <= threshold)]
+        self.backup_bf = BloomFilter(len(self.backup_keys), filter_size_b2 * len(self.initial_keys))
+        self.backup_bf.insert(self.backup_keys.iloc[:, 1])
 
-    FP = (train_negative[ml_false_positive].iloc[:, 1].size) / train_negative.iloc[:, 1].size # stima probabilità di un falso positivo dal modello
-    FN = (positive_sample[ml_false_negative].iloc[:, 1].size) / positive_sample.iloc[:, 1].size # stima probabilità di un falso negativo dal modello
-    if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): return (0, 0, -1) # da cambiare
+    def query(self, query_set):
+        '''
+        query_set: array nella forma
+            data    score
+        '''
 
-    b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
-    b1 = filter_budget - b2
-    if b1 <= 0: # Non serve avere SLBF
-        print("b1 = 0")
-        return (0, 0, positive_sample_len+1)
-    
-    print(f"FP: {FP}, FN: {FN}, b: {filter_budget}, b1: {b1}, b2: {b2}")
-    
-    # Creazione filtro iniziale
-    B1 = BloomFilter(positive_sample_len, b1*positive_sample_len)
-    B1.insert(positive_sample.iloc[:, 1])
-    # Creazione filtro backup
-    key_b2 = positive_sample[ml_false_negative].iloc[:, 1]
-    B2 = BloomFilter(len(key_b2), b2*positive_sample_len)
-    B2.insert(key_b2)
-    # Calcolo FPR
-    B1_false_positive = B1.test(train_negative.iloc[:, 1], single_key = False)
-    ml_false_positive_list = train_negative.iloc[:, 1][(B1_false_positive) & (ml_false_positive)]
-    ml_true_negative_list = train_negative.iloc[:, 1][(B1_false_positive) & (ml_true_negative)]
-    B2_false_positive = B2.test(ml_true_negative_list, single_key = False)
-    total_false_positive = sum(B2_false_positive) + len(ml_false_positive_list)
-    
-    return B1, B2, total_false_positive
+        ml_false_positive = (query_set.iloc[:, -1] > self.threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
+        ml_true_negative = (query_set.iloc[:, -1] <= self.threshold) # maschera veri negativi generati dal modello rispetto alla soglia considerata
+        # Calcolo FPR
+        initial_bf_false_positive = self.initial_bf.test(query_set.iloc[:, 1], single_key = False)
+        ml_false_positive_list = query_set.iloc[:, 1][(initial_bf_false_positive) & (ml_false_positive)]
+        ml_true_negative_list = query_set.iloc[:, 1][(initial_bf_false_positive) & (ml_true_negative)]
+        backup_bf_false_positive = self.backup_bf.test(ml_true_negative_list, single_key = False)
+        total_false_positive = sum(backup_bf_false_positive) + len(ml_false_positive_list)
 
-def Find_Optimal_Parameters(b, train_negative, positive_sample, quantile_order = 10):
-    if b < 1: 
-        print("err")
-        return 
-    FP_opt = train_negative.shape[0] + 1
-    # Calcolo soglie da testare
-    train_dataset = np.array(pd.concat([train_negative, positive_sample])['score']) # 30 % negativi + tutte le chiavi
+        return total_false_positive
+
+    def save(self, path):
+        with path.open("wb") as file:
+             pickle.dump(self, file)
+
+def train_slbf(filter_size, query_train_set, keys, quantile_order):
+    train_dataset = np.array(pd.concat([query_train_set, keys]).iloc[:, -1])
     thresholds_list = [np.quantile(train_dataset, i * (1 / quantile_order)) for i in range(1, quantile_order)] if quantile_order < len(train_dataset) else np.sort(train_dataset)
-    thresh_third_quart_idx = (3 * len(thresholds_list)-1) // 4
-    # print(f"Quantili {[i * (1 / quantile_order) for i in range(1, quantile_order)]}, Soglie: {thresholds_list}")
+    thresh_third_quart_idx = (3 * len(thresholds_list) - 1) // 4
 
-    key_B1 = positive_sample
-    m = len(positive_sample)
-
-    # Test per selezionare direzione
-    print("Soglia sinistra")
-    B1_left, B2_left, fp_items_left = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_third_quart_idx - 1], b)
-    print("Soglia destra")
-    B1_right, B2_right, fp_items_right = test_SLBF(key_B1, m, train_negative, thresholds_list[thresh_third_quart_idx + 1], b)
-
-    # Inizializzo valori ottimi
-    thresholds_list, FP_opt, optimal_B1, optimal_B2, optimal_threshold = (thresholds_list[:thresh_third_quart_idx-1], fp_items_left, B1_left, B2_left, thresholds_list[thresh_third_quart_idx - 1]) if fp_items_left < fp_items_right else (thresholds_list[thresh_third_quart_idx+2:], fp_items_right, B1_right, B2_right, thresholds_list[thresh_third_quart_idx + 1])
-
-    for threshold in thresholds_list:
-        B1, B2, total_false_positive = test_SLBF(positive_sample, m, train_negative, threshold, b)
-        print('Threshold: %f, False positive items: %d' %(round(threshold, 3), total_false_positive))
-        if total_false_positive == -1: continue
-        elif total_false_positive > FP_opt: break # se peggioro rispetto a valore trovato fino ad adesso mi fermo (include anche caso b1 = 0)
-        else:
-            FP_opt = total_false_positive
-            optimal_threshold = threshold
-            optimal_B1 = B1
-            optimal_B2 = B2
-
-    return optimal_B1, optimal_B2, optimal_threshold
+    fp_opt = query_train_set.shape[0]
+    slbf_opt = None #cambiare
     
-def main(DATA_PATH_train, DATA_PATH_test, R_sum, others):
+    for threshold in thresholds_list:
+        ml_false_positive = (query_train_set.iloc[:, -1] > threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
+        ml_false_negative = (keys.iloc[:, -1] <= threshold) # maschera falsi negativi generati dal modello rispetto alla soglia considerata
+
+        FP = (query_train_set[ml_false_positive].iloc[:, 1].size) / query_train_set.iloc[:, 1].size # stima probabilità di un falso positivo dal modello
+        FN = (keys[ml_false_negative].iloc[:, 1].size) / keys.iloc[:, 1].size # stima probabilità di un falso negativo dal modello
+
+        if (FP == 0.0 or FP == 1.0) or (FN == 1.0 or FN == 0.0): continue
+
+        b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
+        b1 = filter_size - b2
+        if b1 <= 0: # Non serve avere SLBF
+            print("b1 = 0")
+            break
+
+        print(f"FP: {FP}, FN: {FN}, b: {filter_size}, b1: {b1}, b2: {b2}")
+
+        slbf = SLBF(keys, b1, b2, threshold)
+        fp_items = slbf.query(query_train_set)
+        print(f"Soglia attuale: {threshold}, FP_items: {fp_items}")
+        if fp_items < fp_opt:
+            fp_opt = fp_items
+            slbf_opt = slbf
+    
+    return slbf_opt, fp_opt
+    
+def load_filter(path):
+    with open(path,"rb") as filter_file:
+        slbf = pickle.load(filter_file)
+    return slbf
+
+def main(DATA_PATH_train, R_sum, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--thresholds_q', action = "store", dest = "thresholds_q", type = int, required = True, help = "order of quantiles to be tested")
     results = parser.parse_args(others)
@@ -103,21 +101,9 @@ def main(DATA_PATH_train, DATA_PATH_test, R_sum, others):
     b = R_sum / len(positive_sample)
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    optimal_B1, optimal_B2, thres_opt = Find_Optimal_Parameters(b, train_negative_sample, positive_sample, thresholds_q)
+    slbf_opt, fp_opt = train_slbf(b, train_negative_sample, positive_sample, thresholds_q)
 
-    '''Stage 2: Run SLBF on all the samples'''
-    ### Test queries
-    negative_sample_test = serialize.load_dataset(DATA_PATH_test)
-    start = time.time()
-    B1FalsePositive = optimal_B1.test(negative_sample_test.iloc[:, 1], single_key = False)
-    FP_ML = negative_sample_test.iloc[:, 1][(B1FalsePositive) & (negative_sample_test['score'] > thres_opt)]
-    Negative_ML = negative_sample_test.iloc[:, 1][(B1FalsePositive) & (negative_sample_test['score'] <= thres_opt)]
-    BF_positive = optimal_B2.test(Negative_ML, single_key = False)
-    end = time.time()
-    FP_items = sum(BF_positive) + len(FP_ML)
-    FPR = FP_items/len(negative_sample_test)
-    print('False positive items: {}; FPR: {}; Size of queries: {}'.format(FP_items, FPR, len(negative_sample_test)))
-    return FP_items, FPR, len(negative_sample_test), (end-start)/len(negative_sample_test)
+    return slbf_opt
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
