@@ -28,7 +28,8 @@ Grid:
 The following arguments are used to handle dataset's ratio in different parts of the script: 
 - `--pos_ratio`, `--neg_ratio`: given the initial dataset, specify the ratio of positive and negative samples to be used in the filter's training phase. The filter is trained by trying different values for the classifier threshold (chosen according to `thresholds_q`), and then choosing the value that results in the filter having the lowest fpr value. 
 - `--pos_ratio_clc`, `--neg_ratio_clc`: given the dataset obtained according to `pos_ratio` and `neg_ratio`, specify the ratio of positive and negative samples to be used in the training phase of the classifiers. In particular, the resulting dataset will be used to perform a nested cross validation, with which the best configuration of hyperparameters is chosen.
--  `--negTest_ratio`: specifies the ratio of negative samples used for the testing query of the trained filter. The samples are extracted from the unsued part of the initial dataset.
+-  `--negTest_ratio`: specifies the ratio of negative samples used for the testing query of the trained filter. The samples are extracted from the unsued part of the initial dataset. default is 1.
+- `--test_path` : optional argument that specifies the path of a dataset for the testing query of the trained filter. if negTest_ratio is specified (!= 1) it specifies the ratio of negative samples extracted from the specified dataset
 
 **Commands**:
 - Run Bloom filter: 
