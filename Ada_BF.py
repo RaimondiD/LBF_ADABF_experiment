@@ -5,9 +5,10 @@ import argparse
 import serialize
 from Bloom_filter import hashfunc
 import time
+from abstract_filter import Abstract_Filter
 
 
-class Ada_BloomFilter():
+class Ada_BloomFilter(Abstract_Filter):
     def __init__(self, n, hash_len, k_max):
         self.n = n
         self.hash_len = int(hash_len)

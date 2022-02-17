@@ -6,8 +6,9 @@ import time
 import pickle
 import serialize
 from Bloom_filter import BloomFilter
+from abstract_filter import Abstract_Filter
 
-class LBF:
+class LBF(Abstract_Filter):
     def __init__(self, keys, filter_size, threshold):
         '''
         keys: nella forma
@@ -33,9 +34,7 @@ class LBF:
 
         return fp_items
 
-    def save(self, path):
-        with path.open("wb") as file:
-            pickle.dump(self, file)
+        
 
 def train_lbf(filter_size, query_train_set, keys, quantile_order):
     '''Search for the best threshold'''
@@ -78,7 +77,6 @@ def main(data_path, size_filter, others):
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     lbf_opt, _ = train_lbf(R_sum, train_negative, positive_sample, thresholds_q)
-
     return lbf_opt
 
 if __name__ == '__main__':

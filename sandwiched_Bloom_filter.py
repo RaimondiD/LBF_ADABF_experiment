@@ -7,8 +7,9 @@ import math
 import serialize
 import pickle
 from Bloom_filter import BloomFilter
+from abstract_filter import Abstract_Filter
 
-class SLBF:
+class SLBF(Abstract_Filter):
     def __init__(self, keys, filter_size_b1, filter_size_b2, threshold):
         '''
         keys: array nella forma
@@ -42,9 +43,6 @@ class SLBF:
 
         return total_false_positive
 
-    def save(self, path):
-        with path.open("wb") as file:
-             pickle.dump(self, file)
 
 def train_slbf(filter_size, query_train_set, keys, quantile_order):
     train_dataset = np.array(pd.concat([query_train_set, keys]).iloc[:, -1])
