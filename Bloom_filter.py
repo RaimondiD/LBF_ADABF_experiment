@@ -18,7 +18,7 @@ class hashfunc(object):
     def __init__(self, m):
         self.m = m
         self.ss = random.randint(1, 99999999)
-    def __call__(self, x): # the function formerly known as "bar"
+    def __call__(self, x):
         return murmurhash3_32(x,seed = self.ss) % self.m
 
 '''
