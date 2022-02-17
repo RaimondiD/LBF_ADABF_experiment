@@ -75,21 +75,27 @@ if __name__ == "__main__":
             print(f"size of classifier {cl} is greater than budget")
             continue
         ### Creazione filtro
-        filter_opt = dizionario[type_filter]()(classifier_score_path, correct_size_filter, other)
+        filter_path = Path(f"{classifier_model_path._str[:-4]}_{type_filter}.pk1")
+        try:
+             filter_opt = serialize.load_model(filter_path)
+        except:
+            filter_opt = dizionario[type_filter]()(classifier_score_path, correct_size_filter, other)
         ### Query di test
-        negative_sample_test = serialize.load_dataset(classifier_score_path_test)
-        start = time.time()
-        fp_items = filter_opt.query(negative_sample_test)
-        end = time.time()
-        ### Salvataggio risultati
-        fpr = fp_items/len(negative_sample_test)
-        filter_time = (end-start)/len(negative_sample_test)
-        structure_dict[cl] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
-    if len(structure_dict) ==0:
-        print(f"budget is too low to create a {type_filter}")
-    else : 
+            filter_opt.save(filter_path)
+        if not(dataset_test_filter.empty):
+            negative_sample_test = serialize.load_dataset(classifier_score_path_test)
+            start = time.time()
+            fp_items = filter_opt.query(negative_sample_test)
+            end = time.time()
+            ### Salvataggio risultati
+            fpr = fp_items/len(negative_sample_test)
+            filter_time = (end-start)/len(negative_sample_test)
+            structure_dict[cl] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
+    
+    if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
         serialize.save_results(results,type_filter)
+        print(results)
 
 
 
