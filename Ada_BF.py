@@ -60,7 +60,7 @@ def R_size(count_key, count_nonkey, R0):
         R[k] = max(int(count_key[k] * (np.log(count_nonkey[0]/count_nonkey[k])/np.log(0.618) + R[0]/count_key[0])), 1)
     return R
 
-def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample):
+def train_opt_ADA(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample):
     c_set = np.arange(c_min, c_max+10**(-6), 0.1)
     FP_opt = train_negative.shape[0]
 
@@ -117,7 +117,7 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
 '''
 Implement Ada-BF
 '''
-def main(DATA_PATH,data_path_test, R_sum, others):
+def main(DATA_PATH, R_sum, others):
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_group_min', action="store", dest="min_group", type=int, required=True, help="Minimum number of groups")
     parser.add_argument('--num_group_max', action="store", dest="max_group", type=int, required=True, help="Maximum number of groups")
@@ -129,19 +129,16 @@ def main(DATA_PATH,data_path_test, R_sum, others):
     num_group_max = results.max_group
     c_min = results.c_min
     c_max = results.c_max
-
     '''
     Load the data and select training data
     '''
     data = serialize.load_dataset(DATA_PATH)
     train_negative = data.loc[(data['label'] == 0)]
     positive_sample = data.loc[(data['label'] == 1)]
-
     '''
     Plot the distribution of scores
     '''
     plt.style.use('seaborn-deep')
-
     x = data.loc[data['label']== 1,'score']
     y = data.loc[data['label']== 0,'score']
     bins = np.linspace(0, 1, 25)
@@ -152,10 +149,11 @@ def main(DATA_PATH,data_path_test, R_sum, others):
     plt.show()
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    opt_Ada = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
+    opt_Ada = train_opt_ADA(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
     
     '''Stage 2: Run Ada-BF on all the samples'''
     ### Test Queries
+    return opt_Ada
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
