@@ -4,11 +4,10 @@ import matplotlib.pyplot as plt
 import argparse
 import serialize
 from Bloom_filter import hashfunc
-import time
 from abstract_filter import Abstract_Filter
 
 
-class Ada_BloomFilter(Abstract_Filter):
+class Ada_BloomFilter():
     def __init__(self, n, hash_len, k_max):
         self.n = n
         self.hash_len = int(hash_len)
@@ -16,6 +15,7 @@ class Ada_BloomFilter(Abstract_Filter):
         for i in range(int(k_max)):
             self.h.append(hashfunc(self.hash_len))
         self.table = np.zeros(self.hash_len, dtype=int)
+    
     def insert(self, key, k):
         for j in range(int(k)):
             t = self.h[j](key)
@@ -29,6 +29,29 @@ class Ada_BloomFilter(Abstract_Filter):
         if match == k:
             test_result = 1
         return test_result
+
+class OptimalAdaBloomFilter(Abstract_Filter):
+
+    def __init__(self,opt_filter, opt_treshold, k_max):
+        self.bloom_filter_opt = opt_filter
+        self.thresholds_opt = opt_treshold
+        self.k_max_opt = k_max
+    
+    def query(self, query_set):     
+        negative_sample_test =  query_set
+        ML_positive = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] >= self.thresholds_opt[-2])]
+        query_negative = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] < self.thresholds_opt[-2])]
+        score_negative = negative_sample_test.iloc[:, -1][(negative_sample_test.iloc[:, -1] < self.thresholds_opt[-2])]
+        test_result = np.zeros(len(query_negative))
+        ss = 0
+        for score_s, query_s in zip(score_negative, query_negative):
+            ix = min(np.where(score_s < self.thresholds_opt)[0])
+            # thres = thresholds[ix]
+            k = self.k_max_opt - ix
+            test_result[ss] = self.bloom_filter_opt.test(query_s, k)
+            ss += 1
+        FP_items = sum(test_result) + len(ML_positive)
+        return FP_items
 
 def R_size(count_key, count_nonkey, R0):
     R = [0]*len(count_key)
@@ -89,7 +112,7 @@ def Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, t
                 k_max_opt = k_max
 
     # print('Optimal FPs: %f, Optimal c: %f, Optimal num_group: %d' % (FP_opt, c_opt, num_group_opt))
-    return bloom_filter_opt, thresholds_opt, k_max_opt
+    return OptimalAdaBloomFilter(bloom_filter_opt, thresholds_opt, k_max_opt)
 
 '''
 Implement Ada-BF
@@ -129,28 +152,10 @@ def main(DATA_PATH,data_path_test, R_sum, others):
     plt.show()
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
-    bloom_filter_opt, thresholds_opt, k_max_opt = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
+    opt_Ada = Find_Optimal_Parameters(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
     
     '''Stage 2: Run Ada-BF on all the samples'''
     ### Test Queries
-    negative_sample_test = serialize.load_dataset(data_path_test)
-    start = time.time()
-    ML_positive = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] >= thresholds_opt[-2])]
-    query_negative = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] < thresholds_opt[-2])]
-    score_negative = negative_sample_test.iloc[:, -1][(negative_sample_test.iloc[:, -1] < thresholds_opt[-2])]
-    test_result = np.zeros(len(query_negative))
-    ss = 0
-    for score_s, query_s in zip(score_negative, query_negative):
-        ix = min(np.where(score_s < thresholds_opt)[0])
-        # thres = thresholds[ix]
-        k = k_max_opt - ix
-        test_result[ss] = bloom_filter_opt.test(query_s, k)
-        ss += 1
-    end = time.time()
-    FP_items = sum(test_result) + len(ML_positive)
-    FPR = FP_items/len(negative_sample_test.iloc[:, 0])
-    print('False positive items: {}; FPR: {}; Size of quries: {}'.format(FP_items, FPR, len(negative_sample_test.iloc[:, 0])))
-    return FP_items, FPR, len(negative_sample_test),(end-start)/len(negative_sample_test)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
