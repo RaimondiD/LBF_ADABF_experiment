@@ -328,13 +328,17 @@ def separate_data(dataset):
     key = dataset.iloc[:,0]
     return X, y, key
 
-def get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs):
-    dataset_train, _ = serialize.divide_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc, rs)
+
+
+def get_bloom_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs, id):
+    dataset_train, _ = serialize.divide_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs)
+    serialize.save_dataset_info(dataset, dataset_train, id)
     X_train,y_train,_ = separate_data(dataset_train)
+
     return X_train, y_train
 
 def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):
-    X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc,rs)
+    X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc, rs, id)
     models = get_classifiers(classifier_list)
     params_list = get_params_list(classifier_list)
     classifier_list = get_cl_list(models)

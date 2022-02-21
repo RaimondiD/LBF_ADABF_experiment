@@ -75,11 +75,13 @@ def load_model(path):
         model = pickle.load(model_file)
     return model
 
-def save_classifier_analysis(dict,id,classifier):
+def save_classifier_analysis(dict, id, classifier, score = True):
     data_name = Path(id)
     dest_dir = result_path / data_name 
     dest_dir.mkdir(parents= True, exist_ok = True)
-    dict.to_csv(dest_dir / Path(classifier + "_score.csv"))
+    if score:
+        classifier += "_score"
+    dict.to_csv(dest_dir / Path(classifier + ".csv"))
 
 def save_model(model, save_path, not_serialize = False):
     '''salva i modelli'''
@@ -133,3 +135,20 @@ def get_score_model_path(cl_dict, id):
     path_model_list = get_list_path(path_classifier, data_info, cl_dict,".pk1")
     ps_test_list =  get_list_path(path_score_test, data_info, cl_dict,".csv")
     return path_score_list, path_model_list, ps_test_list
+
+
+def save_dataset_info(dataset,dataset_train, id, pos_label = 1, neg_label = -1):
+
+    labels = {"pos" : lambda x, pos_label = pos_label : x.loc[(dataset['label'] == pos_label)],
+            "neg": lambda x, neg_label = neg_label : x.loc[(dataset['label'] == neg_label)],
+            }
+    result = {}
+    for label,fun in labels.items():
+        result[label] = {}
+        result[label]["filter"] = len(fun(dataset))
+        result[label]["classifier"] = len(fun(dataset_train))
+    result = pd.DataFrame(result)
+    print(result)
+    save_classifier_analysis(result,id,"info_dataset",score = False)
+
+
