@@ -8,3 +8,5 @@ results/
 models/
 score_classifier/
 score_classifier_test/
+/Datasets/HumChr_data_features_all.csv
+/Datasets/HumChr_data_features_all.zip
