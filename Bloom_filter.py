@@ -109,5 +109,5 @@ if __name__ == '__main__':
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
-    n1 = bloom_filter.test(query_negative, single_key=False)
-    print('False positive rate: ', sum(n1)/n)
+    n1 = bloom_filter.test(query_negative.iloc[:, 1], single_key=False)
+    print('False positive rate: ', sum(n1)/len(query_negative))
