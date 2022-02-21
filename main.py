@@ -14,6 +14,7 @@ from pathlib import Path
 path_score = serialize.path_score
 path_score_test = serialize.path_score_test
 path_classifier = serialize.path_classifier
+magic_name_list = ["s","pr","nr","prc","nrc"] #string used to create magic_id
 dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
             "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main,
             "Ada-BF" : lambda : Ada_BF.main} 
@@ -63,7 +64,7 @@ if __name__ == "__main__":
         dataset_test_filter, _ = serialize.divide_dataset(serialize.load_dataset(data_test_path),0, negTest_ratio, rs)
     del(other_dataset)
     print(len(dataset_train.index), len(dataset_test_filter.index))
-    id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
+    id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc], magic_name_list)
     #addestramento classificatori
     classifier_scores_path, classifier_models_path, classifier_scores_path_test = \
         classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list,\
@@ -97,8 +98,8 @@ if __name__ == "__main__":
     
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter)
+        serialize.save_results(results,type_filter, f"{id}_tnr:{str(negTest_ratio)}")
         print(results)
-
+        print(f"filter result are saved at {id}")
 
 

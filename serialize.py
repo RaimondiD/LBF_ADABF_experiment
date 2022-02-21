@@ -3,10 +3,7 @@ import pickle
 import os
 import numpy as np
 import lzma
-from dataclasses import replace
-from genericpath import exists
 from pathlib import Path
-import classifier
 
 result_path = Path("results/")
 path_classifier = Path("models/")
@@ -39,11 +36,11 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
     return train,other
 
-def magic_id(data_path,list):
-    result = get_data_name(data_path)
-    for el in list:
-        result += str(el)
-    return result
+def magic_id(data_path,list, magic_name):
+    result = get_data_name(data_path) + "_"
+    for name,el in zip(magic_name,list):
+        result += f"{name}:{str(el)}_"
+    return result[:-1]
 
 def load_dataset(path, dtype = None):
     # ds_name = Path(path).parts[-1].split('_')[0]
@@ -67,9 +64,10 @@ def get_time_path(id):
     dest_dir.mkdir(parents= True, exist_ok = True)
     return total_path
 
-def save_results(dict, filter_name):
-    result_path.mkdir(parents = True, exist_ok = True)
-    dict.to_csv(result_path / (filter_name + ".csv"))
+def save_results(dict, filter_name,id):
+    filter_result_path = result_path / Path(id)
+    filter_result_path.mkdir(parents = True, exist_ok = True)
+    dict.to_csv(filter_result_path / (filter_name + ".csv"))
 
 def load_model(path):
     path = get_model_path(path)

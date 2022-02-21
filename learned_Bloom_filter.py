@@ -2,8 +2,6 @@ from turtle import pos
 import numpy as np
 import pandas as pd
 import argparse
-import time
-import pickle
 import serialize
 from Bloom_filter import BloomFilter
 from abstract_filter import Abstract_Filter
