@@ -9,6 +9,8 @@ result_path = Path("results/")
 path_classifier = Path("models/")
 path_score = Path("score_classifier/")
 path_score_test = Path("score_classifier_test/")
+magic_name_list = ["s","pr","nr","prc","nrc"] #string used to create magic_id
+
 
 def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
     negative = dataset.loc[(dataset['label'] == neg_label)]
@@ -36,9 +38,9 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
     return train,other
 
-def magic_id(data_path,list, magic_name):
+def magic_id(data_path,list):
     result = get_data_name(data_path) + "_"
-    for name,el in zip(magic_name,list):
+    for name,el in zip(magic_name_list,list):
         result += f"{name}:{str(el)}_"
     return result[:-1]
 
