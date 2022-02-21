@@ -16,6 +16,7 @@ path_score_test = Path("score_classifier_test/")
 def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
+    del(dataset)
     neg_len, pos_len = len(negative), len(positive)
     
     # Generazione degli indici
@@ -29,7 +30,8 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     positive_samples_train = positive.iloc[positive_samples_train_idx, :]
     other_negative = negative.iloc[negative_other_idx, :]
     other_positive = positive.iloc[positive_other_idx, :]
-
+    del(negative)
+    del(positive)
     # Concatenazione
     train = pd.concat([negative_samples_train, positive_samples_train], axis = 0, ignore_index = True)
     other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
@@ -47,7 +49,7 @@ def load_dataset(path, dtype = None):
     # ds_name = Path(path).parts[-1].split('_')[0]
     # data_csv = pd.read_csv(path / f'{ds_name}_data.csv', dtype = str)
     # feat_pluslabels_csv = pd.read_csv(path / f'{ds_name}_featLabels.csv', dtype = np.int8)
-    data = pd.read_csv(path, dtype = dtype, converters = {'url' : str}) # converter da cambiare in base a nome colonna con i dati
+    data = pd.read_csv(path, dtype = dtype, converters = {'data' : str}) # converter da cambiare in base a nome colonna con i dati
     return data
 
 def load_time(data_path):
@@ -103,7 +105,7 @@ def save_score(model, X_test,y, url, save_path):
     score = np.array(model.predict_proba(X_test))
     if len(score.shape) > 1:
         score = [el[1] for el in score]
-    d = {'url' : url, 'label' : y, 'score' : score}
+    d = {'data' : url, 'label' : y, 'score' : score}
     save_object = pd.DataFrame(d)
     save_object.to_csv(save_path)
         

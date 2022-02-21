@@ -18,6 +18,7 @@ dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
             "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main,
             "Ada-BF" : lambda : Ada_BF.main} 
 
+
 if __name__ == "__main__":
     seed= 110011
     rs = np.random.RandomState(seed)
@@ -55,10 +56,12 @@ if __name__ == "__main__":
     dataset = serialize.load_dataset(data_path, dtype = np.int8)
     print(len(dataset.index))
     dataset_train, other_dataset = serialize.divide_dataset(dataset,pos_ratio,neg_ratio,rs)
+    del(dataset)
     if (not(data_test_path)):
         dataset_test_filter, _ = serialize.divide_dataset(other_dataset, 0, negTest_ratio, rs)
     else:
         dataset_test_filter, _ = serialize.divide_dataset(serialize.load_dataset(data_test_path),0, negTest_ratio, rs)
+    del(other_dataset)
     print(len(dataset_train.index), len(dataset_test_filter.index))
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
     #addestramento classificatori
