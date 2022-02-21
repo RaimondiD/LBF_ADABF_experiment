@@ -67,14 +67,16 @@ def train_slbf(filter_size, query_train_set, keys, quantile_order):
             print("b1 = 0")
             break
 
-        print(f"FP: {FP}, FN: {FN}, b: {filter_size}, b1: {b1}, b2: {b2}")
+        # print(f"FP: {FP}, FN: {FN}, b: {filter_size}, b1: {b1}, b2: {b2}")
 
         slbf = SLBF(keys, b1, b2, threshold)
         fp_items = slbf.query(query_train_set)
-        print(f"Soglia attuale: {threshold}, FP_items: {fp_items}")
+        print(f"Current threshold: {threshold}, False positive items: {fp_items}")
         if fp_items < fp_opt:
             fp_opt = fp_items
             slbf_opt = slbf
+        
+    print(f"Chosen thresholds: {slbf_opt.threshold}")
     
     return slbf_opt, fp_opt
     

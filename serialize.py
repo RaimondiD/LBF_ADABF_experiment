@@ -35,6 +35,7 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
 
     train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
+
     return train,other
 
 def magic_id(data_path,list):
@@ -47,7 +48,7 @@ def load_dataset(path, dtype = None):
     # ds_name = Path(path).parts[-1].split('_')[0]
     # data_csv = pd.read_csv(path / f'{ds_name}_data.csv', dtype = str)
     # feat_pluslabels_csv = pd.read_csv(path / f'{ds_name}_featLabels.csv', dtype = np.int8)
-    data = pd.read_csv(path, dtype = dtype, converters = {'url' : str}) # converter da cambiare in base a nome colonna con i dati
+    data = pd.read_csv(path, dtype = dtype, converters = {'data' : str}) # converter da cambiare in base a nome colonna con i dati
     return data
 
 def load_time(data_path):

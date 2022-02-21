@@ -34,8 +34,6 @@ class LBF(Abstract_Filter):
 
         return fp_items
 
-        
-
 def train_lbf(filter_size, query_train_set, keys, quantile_order):
     '''Search for the best threshold'''
 
@@ -49,13 +47,13 @@ def train_lbf(filter_size, query_train_set, keys, quantile_order):
     for threshold in thresholds_list:
         lbf = LBF(keys, filter_size, threshold)
         fp_items = lbf.query(query_train_set)
-        print(f"Soglia attuale: {threshold}, FP_items: {fp_items}")
+        print(f"Current threshold: {threshold}, False positive items: {fp_items}")
         # Se con la soglia provata miglioro il numero di falsi positivi aggiorno la soglia corrente
         if fp_items < fp_opt:
             fp_opt = fp_items
             lbf_opt = lbf
     
-    print(f"Soglia scelta: {lbf_opt.threshold}")
+    print(f"Chosen thresholds: {lbf_opt.threshold}")
 
     return lbf_opt, fp_opt
 

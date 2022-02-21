@@ -270,6 +270,7 @@ def score_cl(y_score, y_train, classifier_result, name, size, time):
     for metrics_name, metrics_fun in metrics_dict.items():
         if metrics_name not in classifier_result[name].keys(): 
             classifier_result[name][metrics_name] = []
+        print(len(y_score[y_score == 1]), len(y_score[y_score == 0]))
         value = metrics_fun(y_score,y_train)
         classifier_result[name][metrics_name].append(value)
     classifier_result[name]["model_size"] = size
@@ -283,7 +284,7 @@ def avg_cl(classifier_result,name_list):
 def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id):
     X = np.array(X)
     y = np.array(y)
-    kf = StratifiedKFold(n_splits = n_fold_CV, random_state = rs,shuffle = True)
+    kf = StratifiedKFold(n_splits = n_fold_CV, random_state = rs, shuffle = True)
     result = {}
     max_scores = {}
     classifiers_result = {}
@@ -299,6 +300,7 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         for estimator, params, name in zip(models, params_list, names):
             best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
             t_start = time.time()
+            print(y_test, len(y_test[y_test == 1]), len(y_test[y_test == 0]))
             y_score = best_estimator.predict(X_test)
             t_end = time.time()
             avg_time = (t_end - t_start)/len(X_test)
@@ -319,7 +321,7 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
 
 def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
     grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1')
-    grid_obj.fit(X_train,y_train)
+    grid_obj.fit(X_train, y_train)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
 def separate_data(dataset):
@@ -330,6 +332,7 @@ def separate_data(dataset):
 
 def get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs):
     dataset_train, _ = serialize.divide_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc, rs)
+    print(f"Total samples for classifiers' training + testing: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
     X_train,y_train,_ = separate_data(dataset_train)
     return X_train, y_train
 
