@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import argparse
 import tensorflow as tf
@@ -262,8 +263,9 @@ def score_cl(y_score, y_train, classifier_result, name, size, time):
     for metrics_name, metrics_fun in metrics_dict.items():
         if metrics_name not in classifier_result[name].keys(): 
             classifier_result[name][metrics_name] = []
-        print(len(y_score[y_score == 1]), len(y_score[y_score == 0]))
-        value = metrics_fun(y_score,y_train)
+        value = 0.0
+        try: value = metrics_fun(y_score,y_train)
+        except Exception: print(f"Can't compute {metrics_fun.__name__}. The value for this metric will be set to 0.0")
         classifier_result[name][metrics_name].append(value)
     classifier_result[name]["model_size"] = size
     classifier_result[name]["avg_predtime"] = time
@@ -283,7 +285,7 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
     best_estimators = {}
     for el in names: 
         result[el] = []
-        max_scores[el] = 0
+        max_scores[el] = -1
         classifiers_result[el] = {}
 
     for train,test in kf.split(X,y):    
@@ -292,7 +294,6 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         for estimator, params, name in zip(models, params_list, names):
             best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
             t_start = time.time()
-            print(y_test, len(y_test[y_test == 1]), len(y_test[y_test == 0]))
             y_score = best_estimator.predict(X_test)
             t_end = time.time()
             avg_time = (t_end - t_start)/len(X_test)
@@ -322,10 +323,9 @@ def separate_data(dataset):
     key = dataset.iloc[:,0]
     return X, y, key
 
-
-
 def get_bloom_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs, id):
     dataset_train, _ = serialize.divide_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs)
+    print(f"Samples for classifiers' training + testing: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
     serialize.save_dataset_info(dataset, dataset_train, id)
     X_train,y_train,_ = separate_data(dataset_train)
 
@@ -340,6 +340,7 @@ def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_rat
     models_to_train = []
     for _, item in best_estimators.items():
         models_to_train.append(item)
+    print(len(models_to_train))
     train_classifiers(X_train, y_train,  models_to_train, classifier_list, id)
     return classifier_list
 

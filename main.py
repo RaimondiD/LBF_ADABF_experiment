@@ -62,7 +62,8 @@ if __name__ == "__main__":
     else:
         dataset_test_filter, _ = serialize.divide_dataset(serialize.load_dataset(data_test_path),0, negTest_ratio, rs)
     del(other_dataset)
-    print(len(dataset_train.index), len(dataset_test_filter.index))
+    print(f"Samples for filters' training: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
+    print(f"Samples for filters' testing: {len(dataset_test_filter.index)}")
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
     #addestramento classificatori
     classifier_scores_path, classifier_models_path, classifier_scores_path_test = \
@@ -97,7 +98,7 @@ if __name__ == "__main__":
     
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter, f"{id}_tnr:{str(negTest_ratio)}")
+        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}")
         print(results)
         print(f"filter result are saved at {id}")
 

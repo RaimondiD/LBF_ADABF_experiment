@@ -39,10 +39,10 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     return train,other
 
 def magic_id(data_path,list):
-    result = get_data_name(data_path) + "_"
+    result = get_data_name(data_path)
     for name,el in zip(magic_name_list,list):
-        result += f"{name}:{str(el)}_"
-    return result[:-1]
+        result += f"_{name}={str(el)}"
+    return result
 
 def load_dataset(path, dtype = None):
     # ds_name = Path(path).parts[-1].split('_')[0]
