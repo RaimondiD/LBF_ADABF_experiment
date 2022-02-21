@@ -145,7 +145,7 @@ def save_dataset_info(dataset,dataset_train, id, pos_label = 1, neg_label = -1):
     result = {}
     for label,fun in labels.items():
         result[label] = {}
-        result[label]["filter"] = len(fun(dataset))
+        result[label]["total"] = len(fun(dataset))
         result[label]["classifier"] = len(fun(dataset_train))
     result = pd.DataFrame(result)
     print(result)
