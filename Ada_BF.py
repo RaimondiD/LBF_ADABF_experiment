@@ -38,10 +38,9 @@ class OptimalAdaBloomFilter(Abstract_Filter):
         self.k_max_opt = k_max
     
     def query(self, query_set):     
-        negative_sample_test =  query_set
-        ML_positive = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] >= self.thresholds_opt[-2])]
-        query_negative = negative_sample_test.iloc[:, 0][(negative_sample_test.iloc[:, -1] < self.thresholds_opt[-2])]
-        score_negative = negative_sample_test.iloc[:, -1][(negative_sample_test.iloc[:, -1] < self.thresholds_opt[-2])]
+        ML_positive = query_set.iloc[:, 0][(query_set.iloc[:, -1] >= self.thresholds_opt[-2])]
+        query_negative = query_set.iloc[:, 0][(query_set.iloc[:, -1] < self.thresholds_opt[-2])]
+        score_negative = query_set.iloc[:, -1][(query_set.iloc[:, -1] < self.thresholds_opt[-2])]
         test_result = np.zeros(len(query_negative))
         ss = 0
         for score_s, query_s in zip(score_negative, query_negative):

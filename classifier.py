@@ -1,26 +1,18 @@
-from bdb import effective
-from nturl2path import pathname2url
-from matplotlib.pyplot import axis
 import numpy as np
 import argparse
-import pickle
 import tensorflow as tf
 import json
 import serialize
 import time
-import math
-import pandas as pd
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import recall_score, roc_auc_score, average_precision_score, f1_score,accuracy_score, precision_score
 from numpy import ndarray
 from sklearn.svm import LinearSVC
-from sklearn.model_selection import train_test_split
 from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
 from pathlib import Path
-from itertools import product
 
 
 config_path = Path("models/classifier_conf.json")
@@ -330,14 +322,17 @@ def separate_data(dataset):
     key = dataset.iloc[:,0]
     return X, y, key
 
-def get_bloom_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc,rs):
-    dataset_train, _ = serialize.divide_dataset(dataset_train, pos_ratio_clc, neg_ratio_clc, rs)
-    print(f"Total samples for classifiers' training + testing: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
+
+
+def get_bloom_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs, id):
+    dataset_train, _ = serialize.divide_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs)
+    serialize.save_dataset_info(dataset, dataset_train, id)
     X_train,y_train,_ = separate_data(dataset_train)
+
     return X_train, y_train
 
 def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):
-    X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc,rs)
+    X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc, rs, id)
     models = get_classifiers(classifier_list)
     params_list = get_params_list(classifier_list)
     classifier_list = get_cl_list(models)

@@ -3,19 +3,19 @@ import pickle
 import os
 import numpy as np
 import lzma
-from dataclasses import replace
-from genericpath import exists
 from pathlib import Path
-import classifier
 
 result_path = Path("results/")
 path_classifier = Path("models/")
 path_score = Path("score_classifier/")
 path_score_test = Path("score_classifier_test/")
+magic_name_list = ["s","pr","nr","prc","nrc"] #string used to create magic_id
+
 
 def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
+    del(dataset)
     neg_len, pos_len = len(negative), len(positive)
     
     # Generazione degli indici
@@ -29,20 +29,20 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     positive_samples_train = positive.iloc[positive_samples_train_idx, :]
     other_negative = negative.iloc[negative_other_idx, :]
     other_positive = positive.iloc[positive_other_idx, :]
-
+    del(negative)
+    del(positive)
     # Concatenazione
     train = pd.concat([negative_samples_train, positive_samples_train], axis = 0, ignore_index = True)
     other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
 
-    train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
-
+    train = train.sample(frac = 1, random_state= rs).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
     return train,other
 
 def magic_id(data_path,list):
-    result = get_data_name(data_path)
-    for el in list:
-        result += str(el)
-    return result
+    result = get_data_name(data_path) + "_"
+    for name,el in zip(magic_name_list,list):
+        result += f"{name}:{str(el)}_"
+    return result[:-1]
 
 def load_dataset(path, dtype = None):
     # ds_name = Path(path).parts[-1].split('_')[0]
@@ -66,9 +66,10 @@ def get_time_path(id):
     dest_dir.mkdir(parents= True, exist_ok = True)
     return total_path
 
-def save_results(dict, filter_name):
-    result_path.mkdir(parents = True, exist_ok = True)
-    dict.to_csv(result_path / (filter_name + ".csv"))
+def save_results(dict, filter_name,id):
+    filter_result_path = result_path / Path(id)
+    filter_result_path.mkdir(parents = True, exist_ok = True)
+    dict.to_csv(filter_result_path / (filter_name + ".csv"))
 
 def load_model(path):
     path = get_model_path(path)
@@ -76,11 +77,13 @@ def load_model(path):
         model = pickle.load(model_file)
     return model
 
-def save_classifier_analysis(dict,id,classifier):
+def save_classifier_analysis(dict, id, classifier, score = True):
     data_name = Path(id)
     dest_dir = result_path / data_name 
     dest_dir.mkdir(parents= True, exist_ok = True)
-    dict.to_csv(dest_dir / Path(classifier + "_score.csv"))
+    if score:
+        classifier += "_score"
+    dict.to_csv(dest_dir / Path(classifier + ".csv"))
 
 def save_model(model, save_path, not_serialize = False):
     '''salva i modelli'''
@@ -104,7 +107,7 @@ def save_score(model, X_test,y, url, save_path):
     score = np.array(model.predict_proba(X_test))
     if len(score.shape) > 1:
         score = [el[1] for el in score]
-    d = {'url' : url, 'label' : y, 'score' : score}
+    d = {'data' : url, 'label' : y, 'score' : score}
     save_object = pd.DataFrame(d)
     save_object.to_csv(save_path)
         
@@ -134,3 +137,20 @@ def get_score_model_path(cl_dict, id):
     path_model_list = get_list_path(path_classifier, data_info, cl_dict,".pk1")
     ps_test_list =  get_list_path(path_score_test, data_info, cl_dict,".csv")
     return path_score_list, path_model_list, ps_test_list
+
+
+def save_dataset_info(dataset,dataset_train, id, pos_label = 1, neg_label = -1):
+
+    labels = {"pos" : lambda x, pos_label = pos_label : x.loc[(dataset['label'] == pos_label)],
+            "neg": lambda x, neg_label = neg_label : x.loc[(dataset['label'] == neg_label)],
+            }
+    result = {}
+    for label,fun in labels.items():
+        result[label] = {}
+        result[label]["total"] = len(fun(dataset))
+        result[label]["classifier"] = len(fun(dataset_train))
+    result = pd.DataFrame(result)
+    print(result)
+    save_classifier_analysis(result,id,"info_dataset",score = False)
+
+

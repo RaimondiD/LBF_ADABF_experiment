@@ -6,13 +6,6 @@ import serialize
 import argparse
 
 
-'''
-def hashfunc(m):
-    ss = random.randint(1, 99999999)
-    def hash_m(x):
-        return murmurhash3_32(x,seed=ss)%m
-    return hash_m
-'''
 
 class hashfunc(object):
     def __init__(self, m):
