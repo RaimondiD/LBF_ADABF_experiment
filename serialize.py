@@ -35,7 +35,7 @@ def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label =
     train = pd.concat([negative_samples_train, positive_samples_train], axis = 0, ignore_index = True)
     other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
 
-    train = train.sample(frac = 1).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
+    train = train.sample(frac = 1, random_state= rs).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
     return train,other
 
 def magic_id(data_path,list):
