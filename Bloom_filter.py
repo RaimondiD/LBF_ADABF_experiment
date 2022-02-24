@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--pos_ratio', action="store", dest="pos_ratio", type=float, required=True, help="size of the BF", default = 0.7)
     parser.add_argument('--neg_ratio', action="store", dest="neg_ratio", type=float, required=True, help="size of the BF", default = 0.7)
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
-    seed= 22012022
+    seed= 89777776
     rs = np.random.RandomState(seed)
     random.seed(seed)
     results = parser.parse_args()

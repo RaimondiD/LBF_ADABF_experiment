@@ -358,7 +358,7 @@ if __name__ == "__main__":
     parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 1)
     parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 1)
     args = parser.parse_args()
-    seed = 22012022
+    seed = 89777776
     data_path = args.data_path
     pos_ratio = args.pos_ratio
     neg_ratio = args.neg_ratio
