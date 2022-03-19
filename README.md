@@ -14,6 +14,7 @@ classifier.py is used to train and save result of classifier; main.py is used to
 Grid:
  - `[start,end,"range"]` ->  all the integer from start to end ([1,4,"range"] -> 1,2,3,4)
  - `[start,end,n_el]` -> try n_el elements in the log space form 10^(start) to 10^(end) ([-3,1,5] -> 10e-3, 10e-2, 10e-1, 10e0. 10e1)
+ - `[el1,el2...,eln,"list"] -> try all the elements in the list ([1,2,3,4,"list"] -> 1,2,3,4)
  
  there is an example of classifier_conf.json and params_grid_search.json in \models\
 
