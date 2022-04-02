@@ -1,9 +1,11 @@
+from sqlite3 import DataError
 import pandas as pd
 import pickle 
 import os
 import numpy as np
 import lzma
 from pathlib import Path
+import json
 
 result_path = Path("results/")
 path_classifier = Path("models/")
@@ -12,7 +14,8 @@ path_score_test = Path("score_classifier_test/")
 magic_name_list = ["s","pr","nr","prc","nrc"] #string used to create magic_id
 
 
-def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
+def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1):
+    neg_label = find_neg_label(dataset)
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
     del(dataset)
@@ -139,8 +142,8 @@ def get_score_model_path(cl_dict, id):
     return path_score_list, path_model_list, ps_test_list
 
 
-def save_dataset_info(dataset,dataset_train, id, pos_label = 1, neg_label = -1):
-
+def save_dataset_info(dataset,dataset_train, id, pos_label = 1):
+    neg_label = find_neg_label(dataset)
     labels = {"pos" : lambda x, pos_label = pos_label : x.loc[(dataset['label'] == pos_label)],
             "neg": lambda x, neg_label = neg_label : x.loc[(dataset['label'] == neg_label)],
             }
@@ -154,3 +157,17 @@ def save_dataset_info(dataset,dataset_train, id, pos_label = 1, neg_label = -1):
     save_classifier_analysis(result,id,"info_dataset",score = False)
 
 
+def get_classifiers_params(path):
+    with open(path,"r") as file:
+        data = json.load(file)
+    return data
+
+def save_classifiers_params(cl_dict,path):
+    with open(path,"w") as file:
+        json.dump(cl_dict,file,indent="\t")
+
+def find_neg_label(dataset):
+    neg_label = -1
+    if len(dataset.loc[(dataset['label'] == neg_label)]) == 0:
+        neg_label = 0
+    return neg_label

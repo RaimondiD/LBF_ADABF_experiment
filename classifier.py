@@ -2,7 +2,6 @@ from multiprocessing.sharedctypes import Value
 import numpy as np
 import argparse
 import tensorflow as tf
-import json
 import serialize
 import time
 from pandas.core.frame import DataFrame
@@ -15,9 +14,8 @@ from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
 from pathlib import Path
 
-
 config_path = Path("models/classifier_conf.json")
-params_path = Path("models/params_grid_search.json")
+params_path = Path("models/params_grid_search.json") #sposto serealize
 classifier_fun = {"SVM" : lambda: My_SVM,          #dizionario, associa ad ogni chiave la funzione associata
                    "RF" : lambda: My_Random_Forest,          #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
                    "FFNN": lambda: MyKerasClassifier}           #da aggiungere FFNN; le funzioni devono disporre di un metodo train and save per l'addestramento e il salvataggio di score e parametri
@@ -167,12 +165,13 @@ class MultiLayerPerceptron(tf.keras.Model):
         return output_dense_out
     
     
-def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
+def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs, params):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
+    train_list = []
+    update_dict(params,classifier_list)
     s_list, m_list, t_list = serialize.get_score_model_path(get_cl_list(get_classifiers(classifier_list)),id)
     if (force_train):
         analysis_and_train(classifier_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
     else:
-        train_list = []
         for cl, m in zip(classifier_list,m_list):
             try:
                 serialize.load_model(m)
@@ -233,30 +232,27 @@ def get_hyperparameters_confs(classifier_list):
 def get_classifiers(classifier_list):   
     ''' carica il file di configurazione e ritorna le classi dei classificatori necessari, il path a cui vengono salvati 
         gli score e il path a cui vengono salvati i modelli '''
-    with open(config_path,"r") as file:
-        data = json.load(file)
-        cl_list = classifier_list
-        cl_dict = {key : data[key] for key in cl_list}
+    data = serialize.get_classifiers_params(config_path)
+    cl_dict = {key : data[key] for key in classifier_list}
     train_list =  [classifier_fun[key]()(**kwargs) for key, kwargs in cl_dict.items()] 
     return train_list
 
 def get_params_list(classifier_list):
     params_list = []
-    with open(params_path,"r") as file:
-        data = json.load(file)
-        for el in classifier_list:
-            params_dict = data[el]
-            params_classifier = {}
-            for key in params_dict:
-                if params_dict[key][-1] == 'list':
-                    params_classifier[key] = params_dict[key][:-1]
+    data = serialize.get_classifiers_params(params_path)
+    for el in classifier_list:
+        params_dict = data[el]
+        params_classifier = {}
+        for key in params_dict:
+            if params_dict[key][-1] == 'list':
+                params_classifier[key] = params_dict[key][:-1]
+            else:
+                start, stop, num = params_dict[key]
+                if(num == "range"):
+                    params_classifier[key] = list(range(start,stop+1))
                 else:
-                    start, stop, num = params_dict[key]
-                    if(num == "range"):
-                        params_classifier[key] = list(range(start,stop+1))
-                    else:
-                        params_classifier[key] = list(np.logspace(start, stop, num))
-            params_list.append(params_classifier)
+                    params_classifier[key] = list(np.logspace(start, stop, num))
+        params_list.append(params_classifier)
     return params_list   
 
 def score_cl(y_score, y_train, classifier_result, name, size, time):
@@ -347,6 +343,17 @@ def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_rat
 def get_cl_list(models):
     return list(map(lambda x : str(x), models))
 
+def update_dict(params,classifier_list):
+    data = serialize.get_classifiers_params(config_path)
+    for el,name,cl in params:
+        if el != None and cl in classifier_list:
+            data[cl][name] = el
+    serialize.save_classifiers_params(data,config_path)
+
+
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--classifier_list", action = "store", dest = "classifier_list", type = str, nargs = '+', required= True, help = "list of used classifier " )
@@ -357,7 +364,11 @@ if __name__ == "__main__":
     parser.add_argument("--neg_ratio", action = "store", dest = "neg_ratio", type = float, default = 1)
     parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 1)
     parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 1)
+    parser.add_argument("--trees", action = "store", dest = "tree_param", type = str, default = None )
+    parser.add_argument("--layers", action = "store", dest = "layer_size_param", type = str, nargs = '+', default = None )
     args = parser.parse_args()
+    params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
+
     seed = 89777776
     data_path = args.data_path
     pos_ratio = args.pos_ratio
@@ -368,6 +379,7 @@ if __name__ == "__main__":
     id = serialize.magic_id(data_path,[seed,pos_ratio,neg_ratio,pos_ratio_clc,neg_ratio_clc])
     dataset = serialize.load_dataset(args.data_path)
     dataset_train,dataset_test_filter = serialize.divide_dataset(dataset,pos_ratio, neg_ratio, rs)
+    update_dict(params,args.classifier_list)
     analysis_and_train(args.classifier_list,dataset_train,args.nfoldsCV, pos_ratio_clc, neg_ratio_clc,id,rs)
 
 

@@ -35,6 +35,8 @@ if __name__ == "__main__":
     parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 0.7)
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
     parser.add_argument("--test_path", action = "store", dest = "test_path", type = str, default = None)
+    parser.add_argument("--trees", action = "store", dest = "tree_param", type = str, default = None )
+    parser.add_argument("--layers", action = "store", dest = "layer_size_param", type = str, nargs= '+', default = None )
 
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
@@ -47,6 +49,7 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     data_test_path = args.test_path
+    params = [(int(args.tree_param),"n_estimators","RF"),(list(map(lambda x : int(x), args.layer_size_param)),"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and <= 1 ")
 
@@ -54,7 +57,8 @@ if __name__ == "__main__":
     Suddivisione del dataset
     '''
     dataset = serialize.load_dataset(data_path, dtype = np.int8)
-    print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == -1)])})")
+    neg_label = serialize.find_neg_label(dataset)
+    print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == neg_label)])})")
     dataset_train, other_dataset = serialize.divide_dataset(dataset,pos_ratio,neg_ratio,rs)
     del(dataset)
     if (not(data_test_path)):
@@ -62,17 +66,18 @@ if __name__ == "__main__":
     else:
         dataset_test_filter, _ = serialize.divide_dataset(serialize.load_dataset(data_test_path),0, negTest_ratio, rs)
     del(other_dataset)
-    print(f"Samples for filters' training: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
+    print(f"Samples for filters' training: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == neg_label)])})")
     print(f"Samples for filters' testing: {len(dataset_test_filter.index)}")
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
     #addestramento classificatori
     classifier_scores_path, classifier_models_path, classifier_scores_path_test = \
         classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list,\
-        args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs)
+        args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs, params)
     structure_dict = {}
     cl_time = serialize.load_time(id)
     #creazione e addestramento filtri
-    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list):
+    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl \
+        in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list):
         classifier_size = os.path.getsize(classifier_model_path)
         correct_size_filter = size_filter - classifier_size
         if correct_size_filter < 0:
