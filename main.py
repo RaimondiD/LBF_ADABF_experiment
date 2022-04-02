@@ -49,7 +49,8 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     data_test_path = args.test_path
-    params = [(int(args.tree_param),"n_estimators","RF"),(list(map(lambda x : int(x), args.layer_size_param)),"hidden_layers_size","FFNN")]
+    tree_param = None
+    params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and <= 1 ")
 
@@ -84,7 +85,7 @@ if __name__ == "__main__":
             print(f"size of classifier {cl} is greater than budget")
             continue
         ### Creazione filtro
-        filter_path = Path(f"{classifier_model_path._str[:-4]}_{type_filter}.pk1")
+        filter_path = Path(f"{classifier_model_path._str[:-4]}_{type_filter}_{size_filter}.pk1")
         try:
              filter_opt = serialize.load_model(filter_path)
         except:

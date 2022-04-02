@@ -347,6 +347,10 @@ def update_dict(params,classifier_list):
     data = serialize.get_classifiers_params(config_path)
     for el,name,cl in params:
         if el != None and cl in classifier_list:
+            if type(el) == list:
+                el = list(map(lambda x : int(x), el))
+            else:
+                el = int(el)
             data[cl][name] = el
     serialize.save_classifiers_params(data,config_path)
 
