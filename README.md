@@ -20,7 +20,11 @@ Grid:
 **Input arguments (classifer.py and main.py)**: 
 - `--data_path`: a csv file includes the items and labels; 
 - `--nfoldsCV` : number of fold used in CV; default is 5.
-- `--classifier_list`: list of classifier that will be used in the learned filter (RF -> random forest, SVM -> linear support vector machine, FFNN -> multi-strate perceptron).
+- `--classifier_list`: list of classifiers that will be used in the learned filter (RF -> random forest, SVM -> linear support vector machine, FFNN -> multi-strate perceptron).
+- `--trees` : specifies the number of trees of the RF
+- `--layers` : specifies the number of neurons in the hidden layers of the FFNN. es: --layers 50 50 50  specifies 3 hidden layers with 
+50 neurons each.
+
 The following arguments are used to handle dataset's ratio in different parts of the script: 
 - `--pos_ratio`, `--neg_ratio`: given the initial dataset, specify the ratio of positive and negative samples to be used in the filter's training phase. The filter is trained by trying different values for the classifier threshold (chosen according to `thresholds_q`), and then choosing the value that results in the filter having the lowest fpr value. 
 - `--pos_ratio_clc`, `--neg_ratio_clc`: given the dataset obtained according to `pos_ratio` and `neg_ratio`, specify the ratio of positive and negative samples to be used in the training phase of the classifiers. In particular, the resulting dataset will be used to perform a nested cross validation, with which the best configuration of hyperparameters is chosen.
