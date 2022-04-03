@@ -38,6 +38,7 @@ if __name__ == "__main__":
 
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
+    data_test_path = Path(args.test_path) if args.test_path is not None else None
     classifier_list = args.classifier_list
     type_filter  = args.type_filter
     size_filter = args.size_of_filter
@@ -46,25 +47,21 @@ if __name__ == "__main__":
     negTest_ratio = args.negTest_ratio
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
-    data_test_path = args.test_path
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and <= 1 ")
-
     '''
     Suddivisione del dataset
     '''
-    dataset = serialize.load_dataset(data_path, dtype = np.int8)
+    dataset = serialize.load_dataset(data_path)
+    dataset_test = serialize.load_dataset(data_path) if data_test_path is not None else None
+
     print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == -1)])})")
-    dataset_train, other_dataset = serialize.divide_dataset(dataset,pos_ratio,neg_ratio,rs)
+    dataset_train, dataset_test_filter = serialize.divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, rs)
     del(dataset)
-    if (not(data_test_path)):
-        dataset_test_filter, _ = serialize.divide_dataset(other_dataset, 0, negTest_ratio, rs)
-    else:
-        dataset_test_filter, _ = serialize.divide_dataset(serialize.load_dataset(data_test_path),0, negTest_ratio, rs)
-    del(other_dataset)
-    print(f"Samples for filters' training: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
-    print(f"Samples for filters' testing: {len(dataset_test_filter.index)}")
+    print(f"Samples for filters training: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
+    print(f"Samples for filters testing: {len(dataset_test_filter.index)}")
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
+    
     #addestramento classificatori
     classifier_scores_path, classifier_models_path, classifier_scores_path_test = \
         classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list,\
@@ -81,7 +78,7 @@ if __name__ == "__main__":
         ### Creazione filtro
         filter_path = Path(f"{classifier_model_path._str[:-4]}_{type_filter}.pk1")
         try:
-             filter_opt = serialize.load_model(filter_path)
+            filter_opt = serialize.load_model(filter_path)
         except:
             filter_opt = dizionario[type_filter]()(classifier_score_path, correct_size_filter, other)
         ### Query di test
@@ -101,5 +98,6 @@ if __name__ == "__main__":
         serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}")
         print(results)
         print(f"filter result are saved at {id}")
+    
 
 

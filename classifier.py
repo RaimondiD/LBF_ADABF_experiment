@@ -324,8 +324,8 @@ def separate_data(dataset):
     return X, y, key
 
 def get_bloom_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs, id):
-    dataset_train, _ = serialize.divide_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs)
-    print(f"Samples for classifiers' training + testing: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
+    dataset_train, _ = serialize.divide_dataset(dataset, None, pos_ratio_clc, neg_ratio_clc, 0, rs)
+    print(f"Samples for classifiers training + testing: {len(dataset_train.index)}. (Pos, Neg): ({len(dataset_train[(dataset_train['label'] == 1)])}, {len(dataset_train[(dataset_train['label'] == -1)])})")
     serialize.save_dataset_info(dataset, dataset_train, id)
     X_train,y_train,_ = separate_data(dataset_train)
 
@@ -350,24 +350,30 @@ def get_cl_list(models):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--classifier_list", action = "store", dest = "classifier_list", type = str, nargs = '+', required= True, help = "list of used classifier " )
-    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True,
-                    help="path of the dataset")    
+    parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True, help="path of the dataset")    
     parser.add_argument("--nfoldsCV", action= "store", dest = "nfoldsCV",type=int,default = 5, help = "number of folds used in CV (default = 5)")
     parser.add_argument("--pos_ratio", action = "store", dest = "pos_ratio", type = float, default = 1)
     parser.add_argument("--neg_ratio", action = "store", dest = "neg_ratio", type = float, default = 1)
     parser.add_argument("--pos_ratio_clc", action = "store", dest = "pos_ratio_clc", type = float, default = 1)
     parser.add_argument("--neg_ratio_clc", action = "store", dest = "neg_ratio_clc", type = float, default = 1)
+    parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 0)
+    parser.add_argument('--test_path', action = "store", dest = "test_path", type = str, default = None)  
+
     args = parser.parse_args()
     seed = 22012022
-    data_path = args.data_path
+    data_path = Path(args.data_path)
+    data_test_path = Path(args.test_path) if args.test_path is not None else None
     pos_ratio = args.pos_ratio
     neg_ratio = args.neg_ratio
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
+    negTest_ratio = args.negTest_ratio
+
     rs = np.random.RandomState(seed)
     id = serialize.magic_id(data_path,[seed,pos_ratio,neg_ratio,pos_ratio_clc,neg_ratio_clc])
-    dataset = serialize.load_dataset(args.data_path)
-    dataset_train,dataset_test_filter = serialize.divide_dataset(dataset,pos_ratio, neg_ratio, rs)
+    dataset = serialize.load_dataset(data_path)
+    dataset_train,dataset_test_filter = serialize.divide_dataset(dataset, data_test_path, pos_ratio, neg_ratio, negTest_ratio, rs)
+    del(dataset)
     analysis_and_train(args.classifier_list,dataset_train,args.nfoldsCV, pos_ratio_clc, neg_ratio_clc,id,rs)
 
 

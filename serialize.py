@@ -3,6 +3,7 @@ import pickle
 import os
 import numpy as np
 import lzma
+import json
 from pathlib import Path
 
 result_path = Path("results/")
@@ -12,31 +13,49 @@ path_score_test = Path("score_classifier_test/")
 magic_name_list = ["s","pr","nr","prc","nrc"] #string used to create magic_id
 
 
-def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1, neg_label = -1):
+def divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, rs, pos_label = 1, neg_label = -1):
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
     del(dataset)
     neg_len, pos_len = len(negative), len(positive)
     
-    # Generazione degli indici
+    # Creation of index for the training dataset of classifiers and filters
     negative_samples_train_idx = rs.choice(range(neg_len), replace = False, size = int(neg_len * neg_ratio)) # random state?
     positive_samples_train_idx = rs.choice(range(pos_len), replace = False, size = int(pos_len * pos_ratio))
-    negative_other_idx = np.setdiff1d(np.arange(0, neg_len), negative_samples_train_idx)
-    positive_other_idx = np.setdiff1d(np.arange(0, pos_len), positive_samples_train_idx)
-
-    # Divisione dataset
+    # Training dataset splitting
     negative_samples_train = negative.iloc[negative_samples_train_idx, :]
     positive_samples_train = positive.iloc[positive_samples_train_idx, :]
-    other_negative = negative.iloc[negative_other_idx, :]
-    other_positive = positive.iloc[positive_other_idx, :]
-    del(negative)
     del(positive)
+
+    if dataset_test is None: # If dataset_test is None, filters testing index will be extracted from the unused part of dataset
+        negative_other_idx = np.setdiff1d(np.arange(0, neg_len), negative_samples_train_idx) 
+        other_negative = negative.iloc[negative_other_idx, :]
+        negTest_len = len(other_negative)
+        del(negative)
+
+        # Creation of index for filters testing
+        negative_samples_test_idx = rs.choice(range(negTest_len), replace = False, size = int(negTest_len * negTest_ratio))
+        # Testing dataset splitting
+        negative_samples_test = other_negative.iloc[negative_samples_test_idx, :]
+        del(other_negative)
+    else: # If dataset_test is not None, filters testing index will be extracted from dataset_test
+        del(negative)
+        negative_test = dataset_test.loc[(dataset_test['label'] == neg_label)]
+        del(dataset_test)
+        negTest_len = len(negative_test)
+
+        # Creation of index for filters testing
+        negative_samples_test_idx = rs.choice(range(negTest_len), replace = False, size = int(negTest_len * negTest_ratio))
+        # Testing dataset splitting
+        negative_samples_test = negative_test.iloc[negative_samples_test_idx, :]
+
     # Concatenazione
     train = pd.concat([negative_samples_train, positive_samples_train], axis = 0, ignore_index = True)
-    other = pd.concat([other_negative, other_positive], axis = 0, ignore_index = True)
-
+    del(negative_samples_train)
+    del(positive_samples_train)
     train = train.sample(frac = 1, random_state= rs).reset_index(drop=True) # utile o per qualche motivo la cv si rompe con la ffnn, occhio con dataset grandi
-    return train,other
+
+    return train, negative_samples_test
 
 def magic_id(data_path,list):
     result = get_data_name(data_path)
@@ -44,11 +63,16 @@ def magic_id(data_path,list):
         result += f"_{name}={str(el)}"
     return result
 
-def load_dataset(path, dtype = None):
-    # ds_name = Path(path).parts[-1].split('_')[0]
-    # data_csv = pd.read_csv(path / f'{ds_name}_data.csv', dtype = str)
-    # feat_pluslabels_csv = pd.read_csv(path / f'{ds_name}_featLabels.csv', dtype = np.int8)
-    data = pd.read_csv(path, dtype = dtype, converters = {'data' : str}) # converter da cambiare in base a nome colonna con i dati
+def load_dataset(path):
+    json_dtypes_file = path.parent / (path.stem + "_dtypes.json")
+    if(json_dtypes_file.exists()):
+        with json_dtypes_file.open() as f: 
+            dtypes = json.load(f)
+            dtypes = {col_name : np.dtype(t) for col_name, t in dtypes.items()}
+            data = pd.read_csv(path, dtype = dtypes)
+    else: 
+        data = pd.read_csv(path)
+        
     return data
 
 def load_time(data_path):
