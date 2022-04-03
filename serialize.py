@@ -15,7 +15,7 @@ path_score_test = Path("score_classifier_test/")
 magic_name_list = ["s","pr","nr","prc","nrc"] #string used to create magic_id
 
 
-def divide_dataset(dataset, pos_ratio, neg_ratio, rs, pos_label = 1):
+def divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, neg_test_ratio, rs, pos_label = 1):
     neg_label = find_neg_label(dataset)
     negative = dataset.loc[(dataset['label'] == neg_label)]
     positive = dataset.loc[(dataset['label'] == pos_label)]
