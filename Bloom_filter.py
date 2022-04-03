@@ -98,15 +98,16 @@ if __name__ == '__main__':
     data_test_path = args.test_path
 
     dataset = serialize.load_dataset(data_path)
+    neg_label = serialize.find_neg_label(dataset)
     dataset_test = serialize.load_dataset(data_path) if data_test_path is not None else None
-    print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == -1)])})")
+    print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == neg_label)])})")
     data, query_negative = serialize.divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, rs)
     del(dataset)
-    print(f"Samples for filters training: {len(data.index)}. (Pos, Neg): ({len(data[(data['label'] == 1)])}, {len(data[(data['label'] == -1)])})")
+    print(f"Samples for filters training: {len(data.index)}. (Pos, Neg): ({len(data[(data['label'] == 1)])}, {len(data[(data['label'] == neg_label)])})")
     print(f"Samples for filters testing: {len(query_negative.index)}")
     print(query_negative.iloc[:, 0].head())
 
-    negative_sample = data.loc[(data.iloc[:,-1] == -1)] # label?
+    negative_sample = data.loc[(data.iloc[:,-1] == neg_label)] # label?
     positive_sample = data.loc[(data.iloc[:,-1] == 1)]
     query = positive_sample.iloc[:, 0]
     n = len(query)
