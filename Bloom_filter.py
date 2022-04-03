@@ -4,6 +4,7 @@ from sklearn.utils import murmurhash3_32
 import random
 import serialize
 import argparse
+from pathlib import Path
 
 
 
@@ -74,8 +75,6 @@ class BloomFilter():
                     ss += 1
         return test_result
 
-'''Run Bloom filter'''
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', action="store", dest="data_path", type=str, required=True, help="path of the dataset")
@@ -83,24 +82,36 @@ if __name__ == '__main__':
     parser.add_argument('--pos_ratio', action="store", dest="pos_ratio", type=float, required=True, help="size of the BF", default = 0.7)
     parser.add_argument('--neg_ratio', action="store", dest="neg_ratio", type=float, required=True, help="size of the BF", default = 0.7)
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
-    seed= 89777776
+    parser.add_argument("--test_path", action = "store", dest = "test_path", type = str, default = None)
+
+    seed= 22012022
     rs = np.random.RandomState(seed)
     random.seed(seed)
-    results = parser.parse_args()
-    DATA_PATH = results.data_path
-    R_sum = results.R_sum
-    pos_ratio = results.pos_ratio
-    neg_ratio = results.neg_ratio
-    negTest_ratio = results.negTest_ratio
-    dataset = serialize.load_dataset(DATA_PATH)
-    data,other = serialize.divide_dataset(dataset, pos_ratio,neg_ratio,rs)
-    query_negative, _ = serialize.divide_dataset(other, 0, negTest_ratio, rs)
 
-    negative_sample = data.loc[(data.iloc[:,-1] == -1)]
+    args = parser.parse_args()
+    data_path = Path(args.data_path)
+    data_test_path = Path(args.test_path) if args.test_path is not None else None
+    R_sum = args.R_sum
+    pos_ratio = args.pos_ratio
+    neg_ratio = args.neg_ratio
+    negTest_ratio = args.negTest_ratio
+    data_test_path = args.test_path
+
+    dataset = serialize.load_dataset(data_path)
+    dataset_test = serialize.load_dataset(data_path) if data_test_path is not None else None
+    print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == -1)])})")
+    data, query_negative = serialize.divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, rs)
+    del(dataset)
+    print(f"Samples for filters training: {len(data.index)}. (Pos, Neg): ({len(data[(data['label'] == 1)])}, {len(data[(data['label'] == -1)])})")
+    print(f"Samples for filters testing: {len(query_negative.index)}")
+    print(query_negative.iloc[:, 0].head())
+
+    negative_sample = data.loc[(data.iloc[:,-1] == -1)] # label?
     positive_sample = data.loc[(data.iloc[:,-1] == 1)]
-    query = positive_sample.iloc[:,0]
+    query = positive_sample.iloc[:, 0]
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
-    n1 = bloom_filter.test(query_negative.iloc[:, 1], single_key=False)
+    n1 = bloom_filter.test(query_negative.iloc[:, 0], single_key=False)
+
     print('False positive rate: ', sum(n1)/len(query_negative))
