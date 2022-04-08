@@ -1,6 +1,6 @@
 # ADAPTIVE LEARNED BLOOM FILTER (ADA-BF): EFFICIENT UTILIZATION OF THE CLASSIFIER
 
-The repository includes python files which provide implementations of the Bloom filter (BF.py), learned Bloom filter (LBF.py), sandwiched learned Bloom filter (SLBF.py) and Ada Bloom filter (Ada-BF.py). Script to train both classifiers and filters, or classifiers alone are also provided. In particular, a list that summarizes the purpose of each of these script is provided below, more details about specific command line arguments are given later.
+The repository includes python files which provide implementations of the Bloom filter (Bloom_filter.py), learned Bloom filter (learned_bloom_filter.py), sandwiched learned Bloom filter (sandwiched_learned_bloom_filter.py) and Ada Bloom filter (Ada-BF.py). Script to train both classifiers and filters, or classifiers alone are also provided. In particular, a list that summarizes the purpose of each of these script is provided below, more details about specific command line arguments are given later.
 - `classifier.py` trains classifiers on a given dataset and saves both trained models and their scores.
 - `Bloom_filter.py`  initializes a Bloom filter on a given set of keys, tests the initialized structure on a set of negative queries and saves the obtained result.
 - `main.py` trains both classifiers (as in `classifier.py`) and learned filters on a given dataset and saves the obtained results.
