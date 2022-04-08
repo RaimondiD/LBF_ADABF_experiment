@@ -137,6 +137,7 @@ def main(DATA_PATH, R_sum, others):
     '''
     Plot the distribution of scores
     '''
+    '''
     plt.style.use('seaborn-deep')
     x = data.loc[data['label']== 1,'score']
     y = data.loc[data['label']== 0,'score']
@@ -146,6 +147,8 @@ def main(DATA_PATH, R_sum, others):
     plt.legend(loc='upper right')
     plt.savefig('./Score_Dist.png')
     plt.show()
+    '''
+
 
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     opt_Ada = train_opt_ADA(c_min, c_max, num_group_min, num_group_max, R_sum, train_negative, positive_sample)
