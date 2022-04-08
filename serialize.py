@@ -167,9 +167,8 @@ def get_score_model_path(cl_dict, id):
 
 
 def save_dataset_info(dataset,dataset_train, id, pos_label = 1):
-    neg_label = find_neg_label(dataset)
-    labels = {"pos" : lambda x, pos_label = pos_label : x.loc[(dataset['label'] == pos_label)],
-            "neg": lambda x, neg_label = neg_label : x.loc[(dataset['label'] == neg_label)],
+    labels = {"pos" : lambda x, pos_label = pos_label : x.loc[(x['label'] == pos_label)],
+            "neg": lambda x : x.loc[(x['label'] == find_neg_label(x))],
             }
     result = {}
     for label,fun in labels.items():
