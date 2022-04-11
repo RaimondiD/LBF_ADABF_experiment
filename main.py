@@ -40,7 +40,6 @@ if __name__ == "__main__":
 
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
-    data_test_path = Path(args.test_path) if args.test_path is not None else None
     classifier_list = args.classifier_list
     type_filter  = args.type_filter
     size_filter = args.size_of_filter
@@ -58,7 +57,7 @@ if __name__ == "__main__":
     Suddivisione del dataset
     '''
     dataset = serialize.load_dataset(data_path)
-    dataset_test = serialize.load_dataset(data_path) if data_test_path is not None else None
+    dataset_test = serialize.load_dataset(data_test_path) if data_test_path is not None else None
     neg_label = serialize.find_neg_label(dataset)
     print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == neg_label)])})")
     dataset_train, dataset_test_filter = serialize.divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, rs)
