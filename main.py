@@ -40,6 +40,7 @@ if __name__ == "__main__":
 
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
+    data_test_path = Path(args.test_path) if args.test_path is not None else None
     classifier_list = args.classifier_list
     type_filter  = args.type_filter
     size_filter = args.size_of_filter
@@ -48,7 +49,6 @@ if __name__ == "__main__":
     negTest_ratio = args.negTest_ratio
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
-    data_test_path = args.test_path
     tree_param = None
     params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
