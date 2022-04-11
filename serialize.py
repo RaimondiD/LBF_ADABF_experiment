@@ -141,7 +141,7 @@ def save_score(model, X_test,y, url, save_path):
 def get_data_name(data_path):
     '''Datapath nella forma path_to_dataset/datasetname_data.csv'''
     data_path = Path(data_path)
-    return data_path.parts[-1].split("_")[0]
+    return data_path.parts[-1][:-4]
     #return data_path
 
 def get_path(dir_path, data_name, classifier):
