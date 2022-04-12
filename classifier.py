@@ -1,4 +1,5 @@
 from multiprocessing.sharedctypes import Value
+from random import sample
 import numpy as np
 import argparse
 import tensorflow as tf
@@ -13,6 +14,7 @@ from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
 from keras.wrappers.scikit_learn import KerasClassifier
 from pathlib import Path
+from sklearn.utils.class_weight import compute_sample_weight
 
 config_path = Path("models/classifier_conf.json")
 params_path = Path("models/params_grid_search.json") #sposto serealize
@@ -88,7 +90,6 @@ class My_Random_Forest(RandomForestClassifier, Sklearn_classifier):
 
 class My_SVM(LinearSVC,Sklearn_classifier):
     ''' re-implementazione delle linear SVM fornendo  get_probs, save_score, save_model (da inserire in ogni modello)'''
-    
     def get_params(self, deep=True):
         return self.__dict__
     
@@ -135,8 +136,8 @@ class MultiLayerPerceptron(tf.keras.Model):
         
         )
 
-    def fit(self, x, y):
-        super().fit(x, y, epochs = self.epochs, batch_size = self.batch_size)
+    def fit(self, x, y, sample_weight = None):
+        super().fit(x, y, epochs = self.epochs, batch_size = self.batch_size, sample_weight = sample_weight)
 
     def predict_proba(self, X):
         scores = self.predict(X)
@@ -144,15 +145,20 @@ class MultiLayerPerceptron(tf.keras.Model):
         return scores.flatten()
 
     def train_step(self, data):
-        X, y = data # data dipende da ciò che viene passato a fit()
+        # data dipende da ciò che è passato a fit
+        if len(data) == 3:
+            X, y, sample_weight = data
+        else:
+            sample_weight = None
+            X, y = data
 
         with tf.GradientTape() as tape:
             y_hat = self(X, training = True)
-            loss = self.compiled_loss(y, y_hat)
+            loss = self.compiled_loss(y, y_hat, sample_weight = sample_weight)
 
         grads = tape.gradient(loss, self.trainable_weights) # dloss_dweights
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights)) # aggiornamento pesi
-        self.compiled_metrics.update_state(y, y_hat) # aggiornamento metriche
+        self.compiled_metrics.update_state(y, y_hat, sample_weight = sample_weight) # aggiornamento metriche
 
         return {m.name: m.result() for m in self.metrics}
 
@@ -186,7 +192,8 @@ def train_classifiers(X_train, y_train, model_list, name_list, id):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
     _, path_model_list, _ = serialize.get_score_model_path(name_list, id)
     for model, path_model  in zip(model_list, path_model_list):  
-        model.fit(X_train, y_train)
+        sample_weight = compute_sample_weight(class_weight='balanced', y= y_train)
+        model.fit(X_train, y_train, sample_weight = sample_weight)
         model.save_model(path_model)
 
 def save_score(dataset_train_filter, dataset_test_filter, name_list, id):
@@ -270,7 +277,7 @@ def avg_cl(classifier_result,name_list):
     for name in name_list:
         for metric in metrics_dict:
             classifier_result[name][metric] = np.average(classifier_result[name][metric])
-        
+
 def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id):
     X = np.array(X)
     y = np.array(y)
@@ -308,9 +315,10 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
 
     return best_estimators
 
-def my_Grid_search(X_train, X_test, y_train, y_test, estimator, parmas):
-    grid_obj = GridSearchCV(estimator, param_grid = parmas, scoring = 'f1')
-    grid_obj.fit(X_train, y_train)
+def my_Grid_search(X_train, X_test, y_train, y_test, estimator, params):
+    sample_weight = compute_sample_weight(class_weight='balanced', y= y_train)
+    grid_obj = GridSearchCV(estimator, param_grid = params, scoring = 'f1')
+    grid_obj.fit(X_train, y_train, sample_weight = sample_weight)
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
 def separate_data(dataset):
@@ -337,7 +345,7 @@ def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_rat
     for _, item in best_estimators.items():
         models_to_train.append(item)
     print(len(models_to_train))
-    train_classifiers(X_train, y_train,  models_to_train, classifier_list, id)
+    train_classifiers(X_train, y_train, models_to_train, classifier_list, id)
     return classifier_list
 
 def get_cl_list(models):
