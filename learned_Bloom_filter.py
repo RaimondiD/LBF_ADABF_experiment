@@ -9,7 +9,7 @@ from abstract_filter import Abstract_Filter
 class LBF(Abstract_Filter):
     def __init__(self, keys, filter_size, threshold):
         '''
-        keys: nella forma
+        keys: df in the following form
             (index)     data    label    score
         '''
         self.filter_size = filter_size
@@ -21,7 +21,10 @@ class LBF(Abstract_Filter):
 
     def query(self, query_set):
         '''
-        query_set: nella forma
+        Test the LBF against the negative queries in input. 
+        Returns the number of false positives obtained, i.e - the number of negative queries classified as positive by the filter
+
+        query_set: df in the following form
             (index)     data    label    score
         '''
 
@@ -73,6 +76,7 @@ def main(data_path, size_filter, others):
     
     '''Stage 1: Find the hyper-parameters (spare 30% samples to find the parameters)'''
     lbf_opt, _ = train_lbf(R_sum, train_negative, positive_sample, thresholds_q)
+    
     return lbf_opt
 
 if __name__ == '__main__':
