@@ -38,8 +38,8 @@ class OptimalAdaBloomFilter(Abstract_Filter):
         self.k_max_opt = k_max
     
     def query(self, query_set):     
-        ML_positive = query_set.iloc[:, 0][(query_set.iloc[:, -1] >= self.thresholds_opt[-2])]
-        query_negative = query_set.iloc[:, 0][(query_set.iloc[:, -1] < self.thresholds_opt[-2])]
+        ML_positive = query_set.iloc[:, 1][(query_set.iloc[:, -1] >= self.thresholds_opt[-2])]
+        query_negative = query_set.iloc[:, 1][(query_set.iloc[:, -1] < self.thresholds_opt[-2])]
         score_negative = query_set.iloc[:, -1][(query_set.iloc[:, -1] < self.thresholds_opt[-2])]
         test_result = np.zeros(len(query_negative))
         ss = 0
@@ -82,15 +82,15 @@ def train_opt_ADA(c_min, c_max, num_group_min, num_group_max, R_sum, train_negat
                 if int(num_piece * c ** i) < len(score_1):
                     thresholds[-(i + 2)] = score_1[-int(num_piece * c ** i)]
 
-            query = positive_sample.iloc[:, 0]
+            query = positive_sample.iloc[:, 1]
             score = positive_sample.iloc[:, -1]
 
             for score_s, query_s in zip(score, query):
                 ix = min(np.where(score_s < thresholds)[0])
                 k = k_max - ix
                 bloom_filter.insert(query_s, k)
-            ML_positive = train_negative.iloc[:, 0][(train_negative.iloc[:, -1] >= thresholds[-2])]
-            query_negative = train_negative.iloc[:, 0][(train_negative.iloc[:, -1] < thresholds[-2])]
+            ML_positive = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] >= thresholds[-2])]
+            query_negative = train_negative.iloc[:, 1][(train_negative.iloc[:, -1] < thresholds[-2])]
             score_negative = train_negative.iloc[:, -1][(train_negative.iloc[:, -1] < thresholds[-2])]
 
             test_result = np.zeros(len(query_negative))
@@ -110,7 +110,7 @@ def train_opt_ADA(c_min, c_max, num_group_min, num_group_max, R_sum, train_negat
                 thresholds_opt = thresholds
                 k_max_opt = k_max
 
-    # print('Optimal FPs: %f, Optimal c: %f, Optimal num_group: %d' % (FP_opt, c_opt, num_group_opt))
+    # print('Optimal FPs: %f, Optimal c: %f, Optimal num_group: %d' % (FP_opt, c_opt, k_max))
     return OptimalAdaBloomFilter(bloom_filter_opt, thresholds_opt, k_max_opt)
 
 '''
