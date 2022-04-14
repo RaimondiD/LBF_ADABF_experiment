@@ -7,7 +7,8 @@ import lzma
 import json
 from pathlib import Path
 import json
-
+MAX_LEN_NAME = 24
+MAX_LEN_CLASS = 3
 result_path = Path("results/")
 path_classifier = Path("models/")
 path_score = Path("score_classifier/")
@@ -93,16 +94,39 @@ def get_time_path(id):
     dest_dir.mkdir(parents= True, exist_ok = True)
     return total_path
 
-def save_results(dict, filter_name,id):
-    filter_result_path = result_path / Path(id)
-    filter_result_path.mkdir(parents = True, exist_ok = True)
-    dict.to_csv(filter_result_path / (filter_name + ".csv"))
+def save_results(dict, filter_name,id, test_file):
+    if test_file == None:
+        filter_result_path = result_path / Path(id)
+        filter_result_path.mkdir(parents = True, exist_ok = True)
+        dict.to_csv(filter_result_path / (filter_name + ".csv"))
+    else:
+        save_text_result(dict,filter_name,id, test_file)
+
+def save_text_result(dict,filter_name,id, test_file):
+    space_name = (MAX_LEN_NAME-(len(id)//4))*"\t"
+    result_str = ""
+    if not os.path.exists(test_file):
+        result_str = "data"+MAX_LEN_NAME*"\t"+"type\tmethod"+ MAX_LEN_CLASS*"\t"+"FPR\tSPACE\n"
+    type_dict = {"learned_Bloom_filter" : "LBF", "sandwiched_learned_Bloom_filter": "SLBF", "Ada-BF":"ADA-BF"}
+    for key in dict:
+        space_method = "\t"*(MAX_LEN_CLASS-len(key)//4)
+        result_str+=f"""{id }{space_name}\t{type_dict[filter_name]}\t{key}{space_method}\t{dict[key]["FPR"]}\t{dict[key]["size_struct"]}\n"""
+    with open(test_file,"a") as text_file:
+        text_file.write(result_str)
+
+
 
 def load_model(path):
     path = get_model_path(path)
     with lzma.open(path,"rb") as model_file:
         model = pickle.load(model_file)
     return model
+
+def exist_model(path):
+    path = get_model_path(path)
+    return os.path.exists(path)
+
+
 
 def save_classifier_analysis(dict, id, classifier, score = True):
     data_name = Path(id)

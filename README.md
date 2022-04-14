@@ -84,7 +84,7 @@ A list of command line arguments of `main.py` is given below, together with thei
 - (Ada-BF and disjoint Ada-BF only) `--num_group_min` and `--num_group_max` give the range of number of groups to divide (range of *g*
 )
 - (Ada-BF and disjoint Ada-BF only)`--c_min` and `--c_max` provide the range of *c* where *c=m_j/m_{j+1}*
-
+- `--save_path` : specifies a path where the results of filter are saved. If there is already a file then the results are append at it.
 
 ## Results
 
@@ -95,7 +95,7 @@ In particular, for the classifiers three files are generated, namely:
 - `\results\params_path\total_result.csv` which contains the results of all classifier summarized in a single file. 
 - `\results\params_path\info_dataset.csv` which contains information about the dimension of the used dataset.
 
-For the filters, the results are saved in `results\params_path\name_filter`. Furthermore, at the end of the execution of `main.py`, is printed the path of the results of the filter tested in that run.
+For the filters, if --save_path is non used, the results are saved in `results\params_path\name_filter`. Furthermore, at the end of the execution of `main.py`, is printed the path of the results of the filter tested in that run.
 
 ## Commands
 - Run Bloom filter: 
