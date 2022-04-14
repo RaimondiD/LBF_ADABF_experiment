@@ -8,7 +8,7 @@ import time
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import recall_score, roc_auc_score, average_precision_score, f1_score,accuracy_score, precision_score
-from numpy import ndarray
+from numpy import False_, ndarray
 from sklearn.svm import LinearSVC
 from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
@@ -174,8 +174,10 @@ class MultiLayerPerceptron(tf.keras.Model):
 def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs, params):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     train_list = []
     update_dict(params,classifier_list)
+    changes = False
     s_list, m_list, t_list = serialize.get_score_model_path(get_cl_list(get_classifiers(classifier_list)),id)
     if (force_train):
+        changes = True
         analysis_and_train(classifier_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
     else:
         for cl, m in zip(classifier_list,m_list):
@@ -184,9 +186,10 @@ def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_t
             except:
                 train_list.append(cl)
         if(len(train_list)):
+            changes = True
             analysis_and_train(train_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
     save_score(dataset_train,dataset_test_filter, classifier_list, id)
-    return s_list,m_list,t_list
+    return s_list,m_list,t_list,changes
 
 def train_classifiers(X_train, y_train, model_list, name_list, id):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''

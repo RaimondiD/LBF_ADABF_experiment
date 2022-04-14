@@ -10,7 +10,6 @@ import time
 import numpy as np
 from pathlib import Path
 
-
 path_score = serialize.path_score
 path_score_test = serialize.path_score_test
 path_classifier = serialize.path_classifier
@@ -37,7 +36,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_path", action = "store", dest = "test_path", type = str, default = None)
     parser.add_argument("--trees", action = "store", dest = "tree_param", type = str, default = None )
     parser.add_argument("--layers", action = "store", dest = "layer_size_param", type = str, nargs= '+', default = None )
-
+    parser.add_argument("--save_path", action = "store", dest = "save_path", type = str, default= None)
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
     data_test_path = Path(args.test_path) if args.test_path is not None else None
@@ -49,6 +48,7 @@ if __name__ == "__main__":
     negTest_ratio = args.negTest_ratio
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
+    save_path = args.save_path
     tree_param = None
     params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     id = serialize.magic_id(data_path,[seed, pos_ratio, neg_ratio, pos_ratio_clc, neg_ratio_clc])
     
     #addestramento classificatori
-    classifier_scores_path, classifier_models_path, classifier_scores_path_test = \
+    classifier_scores_path, classifier_models_path, classifier_scores_path_test, changes = \
         classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list,\
         args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs, params)
     structure_dict = {}
@@ -82,9 +82,9 @@ if __name__ == "__main__":
             continue
         ### Creazione filtro
         filter_path = Path(f"{classifier_model_path._str[:-4]}_{type_filter}_{size_filter}.pk1")
-        try:
+        if( serialize.exist_model(filter_path) and changes == False ):
             filter_opt = serialize.load_model(filter_path)
-        except:
+        else :
             filter_opt = dizionario[type_filter]()(classifier_score_path, correct_size_filter, other)
         ### Query di test
             filter_opt.save(filter_path)
@@ -100,9 +100,10 @@ if __name__ == "__main__":
     
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}")
+        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}",save_path)
         print(results)
-        print(f"filter result are saved at {id}")
+        dest = save_path if save_path != None else id
+        print(f"filter result are saved at {dest}")
     
 
 
