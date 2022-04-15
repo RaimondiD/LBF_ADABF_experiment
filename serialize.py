@@ -220,3 +220,7 @@ def find_neg_label(dataset):
     if len(dataset.loc[(dataset['label'] == neg_label)]) == 0:
         neg_label = 0
     return neg_label
+
+
+def get_cl_name(path):
+    return path.parts[-1][:-4].split("_")[0]

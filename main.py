@@ -73,8 +73,8 @@ if __name__ == "__main__":
     structure_dict = {}
     cl_time = serialize.load_time(id)
     #creazione e addestramento filtri
-    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl \
-        in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list):
+    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl, cl_tot \
+        in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list,list(map(lambda x: serialize.get_cl_name(x),classifier_models_path))):
         classifier_size = os.path.getsize(classifier_model_path)
         correct_size_filter = size_filter - classifier_size
         if correct_size_filter < 0:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
             ### Salvataggio risultati
             fpr = fp_items/len(negative_sample_test)
             filter_time = (end-start)/len(negative_sample_test)
-            structure_dict[cl] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
+            structure_dict[cl_tot] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
     
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
