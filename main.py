@@ -75,7 +75,7 @@ if __name__ == "__main__":
     #creazione e addestramento filtri
     for classifier_score_path, classifier_model_path, classifier_score_path_test, cl \
         in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list):
-        classifier_size = os.path.getsize(classifier_model_path)
+        classifier_size = os.path.getsize(classifier_model_path)*8
         correct_size_filter = size_filter - classifier_size
         if correct_size_filter < 0:
             print(f"size of classifier {cl} is greater than budget")
