@@ -1,4 +1,3 @@
-from sqlite3 import DataError
 import pandas as pd
 import pickle 
 import os

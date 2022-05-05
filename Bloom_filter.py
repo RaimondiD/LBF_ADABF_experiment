@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 from sklearn.utils import murmurhash3_32
 import random
 import serialize
