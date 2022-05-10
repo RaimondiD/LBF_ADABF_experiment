@@ -49,7 +49,6 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     save_path = args.save_path
-    tree_param = None
     params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and <= 1 ")
@@ -100,7 +99,7 @@ if __name__ == "__main__":
     
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}",save_path)
+        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}_RF_{args.tree_param}_FFNN_{args.layer_size_param}_{size_filter}",save_path)
         print(results)
         dest = save_path if save_path != None else id
         print(f"filter result are saved at {dest}")
