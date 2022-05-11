@@ -96,12 +96,12 @@ if __name__ == "__main__":
             fpr = fp_items/len(negative_sample_test)
             filter_time = (end-start)/len(negative_sample_test)
             structure_dict[cl_tot] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
-    
+    s_id = f"{id}_tnr={str(negTest_ratio)}_RF_{args.tree_param}_FFNN_{args.layer_size_param}_{size_filter}"
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}_RF_{args.tree_param}_FFNN_{args.layer_size_param}_{size_filter}",save_path)
+        serialize.save_results(results,type_filter, s_id,save_path)
         print(results)
-        dest = save_path if save_path != None else id
+        dest = save_path if save_path != None else s_id
         print(f"filter result are saved at {dest}")
     
 
