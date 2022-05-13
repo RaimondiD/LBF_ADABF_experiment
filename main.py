@@ -49,7 +49,6 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     save_path = args.save_path
-    tree_param = None
     params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and <= 1 ")
@@ -73,8 +72,9 @@ if __name__ == "__main__":
     structure_dict = {}
     cl_time = serialize.load_time(id)
     #creazione e addestramento filtri
-    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl \
-        in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list):
+
+    for classifier_score_path, classifier_model_path, classifier_score_path_test, cl, cl_tot \
+        in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list,list(map(lambda x: serialize.get_cl_name(x),classifier_models_path))):
         classifier_size = os.path.getsize(classifier_model_path)*8
         correct_size_filter = size_filter - classifier_size
         if correct_size_filter < 0:
@@ -96,11 +96,11 @@ if __name__ == "__main__":
             ### Salvataggio risultati
             fpr = fp_items/len(negative_sample_test)
             filter_time = (end-start)/len(negative_sample_test)
-            structure_dict[cl] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
+            structure_dict[cl_tot] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "medium query time: ": cl_time[cl] + filter_time}
     
     if len(structure_dict) !=0 : 
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}",save_path)
+        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}_RF_{args.tree_param}_FFNN_{args.layer_size_param}_{size_filter}",save_path)
         print(results)
         dest = save_path if save_path != None else id
         print(f"filter result are saved at {dest}")

@@ -1,5 +1,3 @@
-from multiprocessing.sharedctypes import Value
-from random import sample
 import numpy as np
 import argparse
 import tensorflow as tf
@@ -8,7 +6,7 @@ import time
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import recall_score, roc_auc_score, average_precision_score, f1_score,accuracy_score, precision_score
-from numpy import False_, ndarray
+from numpy import  ndarray
 from sklearn.svm import LinearSVC
 from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier

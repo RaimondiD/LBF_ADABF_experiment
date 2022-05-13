@@ -1,5 +1,3 @@
-from operator import pos
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import argparse
@@ -8,6 +6,7 @@ import serialize
 import pickle
 from Bloom_filter import BloomFilter
 from abstract_filter import Abstract_Filter
+import os
 
 class SLBF(Abstract_Filter):
     def __init__(self, keys, filter_size_b1, filter_size_b2, threshold):
@@ -18,7 +17,6 @@ class SLBF(Abstract_Filter):
         self.filter_size_b1 = filter_size_b1
         self.filter_size_b2 = filter_size_b2
         self.threshold = threshold
-
         self.initial_keys = keys
         if filter_size_b1 > 0 :
             self.initial_bf = BloomFilter(len(self.initial_keys), filter_size_b1 * len(self.initial_keys)) #salvare len prima
@@ -93,9 +91,12 @@ def train_slbf(filter_size, query_train_set, keys, quantile_order):
         if fp_items < fp_opt:
             fp_opt = fp_items
             slbf_opt = slbf
-        
+            
+    if(slbf_opt==None):
+            print("FN + FP >= 1 with all the thresold, is impossible to build a SLBF")
+            os._exit(os.EX_CONFIG)
     print(f"Chosen thresholds: {slbf_opt.threshold}")
-    
+
     return slbf_opt, fp_opt
     
 def load_filter(path):
