@@ -4,7 +4,7 @@ import random
 import serialize
 import argparse
 from pathlib import Path
-
+import time
 
 
 class hashfunc(object):
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('--neg_ratio', action="store", dest="neg_ratio", type=float, required=True, help="size of the BF", default = 0.7)
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 1.0)
     parser.add_argument("--test_path", action = "store", dest = "test_path", type = str, default = None)
-
+    parser.add_argument("--save_path", action = "store", dest = "save_path", type = str, default = None)
     seed= 22012022
     rs = np.random.RandomState(seed)
     random.seed(seed)
@@ -95,10 +95,10 @@ if __name__ == '__main__':
     neg_ratio = args.neg_ratio
     negTest_ratio = args.negTest_ratio
     data_test_path = args.test_path
-
     dataset = serialize.load_dataset(data_path)
     neg_label = serialize.find_neg_label(dataset)
     dataset_test = serialize.load_dataset(data_path) if data_test_path is not None else None
+    save_path = args.save_path
     print(f"Total samples: {len(dataset.index)}. (Pos, Neg): ({len(dataset[(dataset['label'] == 1)])}, {len(dataset[(dataset['label'] == neg_label)])})")
     data, query_negative = serialize.divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, rs)
     del(dataset)
@@ -112,6 +112,10 @@ if __name__ == '__main__':
     n = len(query)
     bloom_filter = BloomFilter(n, R_sum)
     bloom_filter.insert(query)
+    start = time.time()
     n1 = bloom_filter.test(query_negative.iloc[:, 0], single_key=False)
-
+    end = time.time()
+    if(save_path):
+        with open(save_path,"a") as file1:
+            file1.write(str(data_path) +","+str(R_sum)+","+str(np.round(sum(n1)/len(query_negative), 5))+","+str((end - start)/len(query_negative))+"\n")
     print('False positive rate: ', sum(n1)/len(query_negative))
