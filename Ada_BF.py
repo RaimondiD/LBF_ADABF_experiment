@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import argparse
 import serialize
 from Bloom_filter import hashfunc
@@ -100,13 +102,14 @@ def train_opt_ADA(c_min, c_max, num_group_min, num_group_max, R_sum, train_negat
                 test_result[ss] = bloom_filter.test(query_s, k)
                 ss += 1
             FP_items = sum(test_result) + len(ML_positive)
-            print('False positive items: %d, Number of groups: %d, c = %f' %(FP_items, k_max, round(c, 2)))
+            
 
             if FP_opt > FP_items:
                 FP_opt = FP_items
                 bloom_filter_opt = bloom_filter
                 thresholds_opt = thresholds
                 k_max_opt = k_max
+                print('False positive items: %d, Number of groups: %d, c = %f' %(FP_items, k_max, round(c, 2)))
 
     # print('Optimal FPs: %f, Optimal c: %f, Optimal num_group: %d' % (FP_opt, c_opt, k_max))
     return OptimalAdaBloomFilter(bloom_filter_opt, thresholds_opt, k_max_opt)

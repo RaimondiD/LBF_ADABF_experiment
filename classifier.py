@@ -1,12 +1,20 @@
+from multiprocessing.sharedctypes import Value
+from random import sample
 import numpy as np
 import argparse
+import logging
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
+import os, gc
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+
 import tensorflow as tf
 import serialize
 import time
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import recall_score, roc_auc_score, average_precision_score, f1_score,accuracy_score, precision_score
-from numpy import  ndarray
+from numpy import False_, ndarray
 from sklearn.svm import LinearSVC
 from scipy.special import expit
 from sklearn.ensemble import RandomForestClassifier
@@ -135,10 +143,10 @@ class MultiLayerPerceptron(tf.keras.Model):
         )
 
     def fit(self, x, y, sample_weight = None):
-        super().fit(x, y, epochs = self.epochs, batch_size = self.batch_size, sample_weight = sample_weight)
+        super().fit(x, y, epochs = self.epochs, batch_size = self.batch_size, sample_weight = sample_weight, verbose=2)
 
     def predict_proba(self, X):
-        scores = self.predict(X)
+        scores = self.predict(X, batch_size=5000)
 
         return scores.flatten()
 
@@ -169,14 +177,14 @@ class MultiLayerPerceptron(tf.keras.Model):
         return output_dense_out
     
     
-def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs, params):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
+def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs, params,balance_classes):  #metodo per capire se è necessario effettuare l'addestramento dei classificatori specificati
     train_list = []
     update_dict(params,classifier_list)
     changes = False
     s_list, m_list, t_list = serialize.get_score_model_path(get_cl_list(get_classifiers(classifier_list)),id)
     if (force_train):
         changes = True
-        analysis_and_train(classifier_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
+        analysis_and_train(classifier_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs, balance_classes)
     else:
         for cl, m in zip(classifier_list,m_list):
             try:
@@ -185,16 +193,19 @@ def integrate_train(dataset_train, dataset_test_filter, classifier_list, force_t
                 train_list.append(cl)
         if(len(train_list)):
             changes = True
-            analysis_and_train(train_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs)
+            analysis_and_train(train_list, dataset_train, n_fold_CV, pos_ratio_clc, neg_ratio_clc,id,rs,balance_classes)
     save_score(dataset_train,dataset_test_filter, classifier_list, id)
     return s_list,m_list,t_list,changes
 
-def train_classifiers(X_train, y_train, model_list, name_list, id):
+def train_classifiers(X_train, y_train, model_list, name_list, id, balance_classes):
     ''' dato il dataset e gli argomenti passati da linea di comando addestra i classificatori e salva i modelli e gli score'''
     _, path_model_list, _ = serialize.get_score_model_path(name_list, id)
     for model, path_model  in zip(model_list, path_model_list):  
         sample_weight = compute_sample_weight(class_weight='balanced', y= y_train)
-        model.fit(X_train, y_train, sample_weight = sample_weight)
+        if balance_classes:
+            model.fit(X_train, y_train, sample_weight = sample_weight)
+        else:
+            model.fit(X_train, y_train)
         model.save_model(path_model)
 
 def save_score(dataset_train_filter, dataset_test_filter, name_list, id):
@@ -267,9 +278,12 @@ def score_cl(y_score, y_train, classifier_result, name, size, time):
     for metrics_name, metrics_fun in metrics_dict.items():
         if metrics_name not in classifier_result[name].keys(): 
             classifier_result[name][metrics_name] = []
-        value = 0.0
+        value = 0.5
         try: value = metrics_fun(y_score,y_train)
-        except Exception: print(f"Can't compute {metrics_fun.__name__}. The value for this metric will be set to 0.0")
+        except Exception: print(f"Can't compute {metrics_fun.__name__}. The value for this metric will be set to 0.5")
+        if np.isnan(value):
+           print("Nan found: metto a 0")
+           value = 0
         classifier_result[name][metrics_name].append(value)
     classifier_result[name]["model_size"] = size
     classifier_result[name]["avg_predtime"] = time
@@ -277,9 +291,9 @@ def score_cl(y_score, y_train, classifier_result, name, size, time):
 def avg_cl(classifier_result,name_list):
     for name in name_list:
         for metric in metrics_dict:
-            classifier_result[name][metric] = np.average(classifier_result[name][metric])
+            classifier_result[name][metric] = np.round(np.average(classifier_result[name][metric]), 5)
 
-def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id):
+def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id, balance_classes):
     X = np.array(X)
     y = np.array(y)
     kf = StratifiedKFold(n_splits = n_fold_CV, random_state = rs, shuffle = True)
@@ -296,7 +310,8 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
         X_train, X_test = X[train], X[test]
         y_train, y_test = y[train], y[test]
         for estimator, params, name in zip(models, params_list, names):
-            best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params)
+            best_estimator, best_score = my_Grid_search(X_train, X_test, y_train, y_test, estimator, params, nfolds=n_fold_CV,
+                                                        balance_classes=balance_classes)
             t_start = time.time()
             y_score = best_estimator.predict(X_test)
             t_end = time.time()
@@ -316,10 +331,22 @@ def cross_validation_analisys(X,y, models, names, params_list, n_fold_CV,rs, id)
 
     return best_estimators
 
-def my_Grid_search(X_train, X_test, y_train, y_test, estimator, params):
+def my_Grid_search(X_train, X_test, y_train, y_test, estimator, params, nfolds, balance_classes):
     sample_weight = compute_sample_weight(class_weight='balanced', y= y_train)
-    grid_obj = GridSearchCV(estimator, param_grid = params, scoring = 'f1')
-    grid_obj.fit(X_train, y_train, sample_weight = sample_weight)
+#    vals = np.unique(sample_weight)
+#    print(vals)
+#    minv = np.min(vals)
+#    maxv = np.max(vals)
+#    maxw = np.maximum(minv, maxv*0.33)
+#    sample_weight[sample_weight == maxv] = maxw
+#    print(sample_weight)
+#    print("balance_classes:", balance_classes)
+    grid_obj = GridSearchCV(estimator, param_grid = params, scoring = 'f1', cv=nfolds)
+    if balance_classes:
+        grid_obj.fit(X_train, y_train, sample_weight = sample_weight)
+    else:
+        grid_obj.fit(X_train, y_train)
+#    grid_obj.fit(X_train, y_train)    
     return grid_obj.best_estimator_, grid_obj.score(X_test,y_test)
 
 def separate_data(dataset):
@@ -336,17 +363,17 @@ def get_bloom_dataset(dataset, pos_ratio_clc, neg_ratio_clc, rs, id):
 
     return X_train, y_train
 
-def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs):
+def analysis_and_train(classifier_list, dataset_train_filter, n_fold_CV, pos_ratio_clc, neg_ratio_clc, id, rs, balance_classes):
     X_train,y_train = get_bloom_dataset(dataset_train_filter, pos_ratio_clc, neg_ratio_clc, rs, id)
     models = get_classifiers(classifier_list)
     params_list = get_params_list(classifier_list)
     classifier_list = get_cl_list(models)
-    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV, rs, id)    
+    best_estimators = cross_validation_analisys(X_train, y_train, models, classifier_list, params_list, n_fold_CV, rs, id, balance_classes)    
     models_to_train = []
     for _, item in best_estimators.items():
         models_to_train.append(item)
     print(len(models_to_train))
-    train_classifiers(X_train, y_train, models_to_train, classifier_list, id)
+    train_classifiers(X_train, y_train, models_to_train, classifier_list, id, balance_classes)
     return classifier_list
 
 def get_cl_list(models):
@@ -380,6 +407,7 @@ if __name__ == "__main__":
     parser.add_argument("--layers", action = "store", dest = "layer_size_param", type = str, nargs = '+', default = None )
     parser.add_argument("--negTest_ratio", action = "store", dest = "negTest_ratio", type = float, default = 0)
     parser.add_argument('--test_path', action = "store", dest = "test_path", type = str, default = None)  
+    parser.add_argument('--balance_classes', action = "store_true", dest = "balance_classes")  
     
 
     args = parser.parse_args()
@@ -397,10 +425,12 @@ if __name__ == "__main__":
     rs = np.random.RandomState(seed)
     id = serialize.magic_id(data_path,[seed,pos_ratio,neg_ratio,pos_ratio_clc,neg_ratio_clc])
     dataset = serialize.load_dataset(data_path)
-    dataset_train,dataset_test_filter = serialize.divide_dataset(dataset, data_test_path, pos_ratio, neg_ratio, negTest_ratio, rs)
+    dataset_train,dataset_test_filter = serialize.divide_dataset(dataset, data_test_path,
+                                                    pos_ratio, neg_ratio, negTest_ratio, rs)
     del(dataset)
+    gc.collect()
     update_dict(params,args.classifier_list)
-    analysis_and_train(args.classifier_list,dataset_train,args.nfoldsCV, pos_ratio_clc, neg_ratio_clc,id,rs)
+    analysis_and_train(args.classifier_list,dataset_train,args.nfoldsCV, pos_ratio_clc, neg_ratio_clc,id,rs, args.balance_classes)
 
 
 

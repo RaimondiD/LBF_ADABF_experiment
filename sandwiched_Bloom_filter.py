@@ -1,3 +1,5 @@
+from operator import pos
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import argparse
@@ -6,7 +8,7 @@ import serialize
 import pickle
 from Bloom_filter import BloomFilter
 from abstract_filter import Abstract_Filter
-import os
+import learned_Bloom_filter
 
 class SLBF(Abstract_Filter):
     def __init__(self, keys, filter_size_b1, filter_size_b2, threshold):
@@ -17,6 +19,7 @@ class SLBF(Abstract_Filter):
         self.filter_size_b1 = filter_size_b1
         self.filter_size_b2 = filter_size_b2
         self.threshold = threshold
+
         self.initial_keys = keys
         if filter_size_b1 > 0 :
             self.initial_bf = BloomFilter(len(self.initial_keys), filter_size_b1 * len(self.initial_keys)) #salvare len prima
@@ -56,7 +59,7 @@ def train_slbf(filter_size, query_train_set, keys, quantile_order):
 
     fp_opt = query_train_set.shape[0]
     slbf_opt = None #cambiare
-
+#    print("thresholds_list:", thresholds_list)
     for threshold in thresholds_list:
         ml_false_positive = (query_train_set.iloc[:, -1] > threshold) # maschera falsi positivi generati dal modello rispetto alla soglia considerata,
         ml_false_negative = (keys.iloc[:, -1] <= threshold) # maschera falsi negativi generati dal modello rispetto alla soglia considerata
@@ -64,39 +67,40 @@ def train_slbf(filter_size, query_train_set, keys, quantile_order):
         FP = (query_train_set[ml_false_positive].iloc[:, 1].size) / query_train_set.iloc[:, 1].size # stima probabilità di un falso positivo dal modello
         FN = (keys[ml_false_negative].iloc[:, 1].size) / keys.iloc[:, 1].size # stima probabilità di un falso negativo dal modello
 
-        print(f"Current threshold: {threshold}, FP: {FP}, FN: {FN}")
-
+        
+#        print(f"Current threshold: {threshold}")
         if (FP == 0.0):
-            print("FP = 0, created a LBF")
-            slbf_opt = SLBF(keys, 0, filter_size, threshold)
-            break
+            print("FP = 0, skip")
+            #filter_opt = learned_bloom_filter.main(classifier_score_path, correct_size_filter, other)
+            #slbf_opt = SLBF(keys, 0, filter_size, threshold)            
+            continue
         if (FN == 1.0 or FN == 0.0): 
-            print("FP is equal to 1.0, or FN is equal to 0 or 1, skipping threshold")
+#            print("FP is equal to 1.0, or FN is equal to 0 or 1, skipping threshold")
             continue
         if (FP + FN > 1): # If FP + FN >= 1, the budget b2 becomes negative
-            print("FP + FN >= 1, skipping threshold")
+#            print("FP + FN >= 1, skipping threshold")
             continue
 
         b2 = FN * math.log(FP / ((1 - FP) * ((1/FN) - 1)), 0.6185)
         b1 = filter_size - b2
         if b1 <= 0: # Non serve avere SLBF
             print("b1 = 0")
+            b1=0
             break
 
         # print(f"FP: {FP}, FN: {FN}, b: {filter_size}, b1: {b1}, b2: {b2}")
 
         slbf = SLBF(keys, b1, b2, threshold)
         fp_items = slbf.query(query_train_set)
-        print(f"False positive items: {fp_items}")
+#        print(f"\tFalse positive items: {fp_items}")
         if fp_items < fp_opt:
             fp_opt = fp_items
             slbf_opt = slbf
-            
-    if(slbf_opt==None):
-            print("FN + FP >= 1 with all the thresold, is impossible to build a SLBF")
-            os._exit(os.EX_CONFIG)
-    print(f"Chosen thresholds: {slbf_opt.threshold}")
-
+#            print(f"False positive items: {fp_items} - Current threshold: {threshold}")
+        
+    fp_items = slbf_opt.query(query_train_set)
+    print(f"Chosen thresholds: {slbf_opt.threshold} - False positive items: {fp_items}")
+    
     return slbf_opt, fp_opt
     
 def load_filter(path):
