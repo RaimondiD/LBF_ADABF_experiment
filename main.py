@@ -100,14 +100,14 @@ if __name__ == "__main__":
             ### Salvataggio risultati
             fpr = fp_items/len(negative_sample_test)
             filter_time = (end-start)/len(negative_sample_test)
-            structure_dict[cl_tot] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size ,"time":filter_time, "medium query time: ": cl_time[cl] + filter_time}
-    s_id = f"{id}_tnr={str(negTest_ratio)}_RF_{args.tree_param}_FFNN_{args.layer_size_param}_{size_filter}"
+            structure_dict[cl] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size , "time": filter_time}
+    
     if len(structure_dict) !=0 : 
         print(structure_dict)
         results = DataFrame(structure_dict)
-        serialize.save_results(results,type_filter, s_id,save_path)
+        serialize.save_results(results,type_filter, f"{id}_tnr={str(negTest_ratio)}",save_path)
         print(results)
-        dest = save_path if save_path != None else s_id
+        dest = save_path if save_path != None else id
         print(f"filter result are saved at {dest}")
     
 

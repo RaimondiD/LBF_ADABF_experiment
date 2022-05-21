@@ -1,3 +1,5 @@
+from operator import pos
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import argparse
@@ -6,7 +8,6 @@ import serialize
 import pickle
 from Bloom_filter import BloomFilter
 from abstract_filter import Abstract_Filter
-import os
 
 class SLBF(Abstract_Filter):
     def __init__(self, keys, filter_size_b1, filter_size_b2, threshold):

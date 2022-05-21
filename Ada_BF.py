@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import argparse
 import serialize
 from Bloom_filter import hashfunc

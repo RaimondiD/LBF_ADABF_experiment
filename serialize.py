@@ -1,4 +1,3 @@
-from sqlite3 import DataError
 import pandas as pd
 import pickle 
 import os
@@ -122,8 +121,7 @@ def save_text_result(dict,filter_name,id, test_file):
     type_dict = {"learned_Bloom_filter" : "LBF", "sandwiched_learned_Bloom_filter": "SLBF", "Ada-BF":"ADA-BF"}
     for key in dict:
         space_method = "\t"*(MAX_LEN_CLASS-len(key)//4)
-        space_fpr = "\t" *(MAX_LEN_FPR - len(str(dict[key]['FPR']))//4)
-        result_str+=f"""{id }{space_name}\t{type_dict[filter_name]}\t{key}{space_method}\t{dict[key]["FPR"]}{space_fpr}\t{dict[key]["size_struct"]}\t{dict[key]["time"]}\n"""
+        result_str+=f"""{id }{space_name}\t{type_dict[filter_name]}\t{key}{space_method}\t{dict[key]["FPR"]}\t{dict[key]["size_struct"]}\t{dict[key]["time"]}\n"""
     with open(test_file,"a") as text_file:
         text_file.write(result_str)
 
