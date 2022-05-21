@@ -37,6 +37,8 @@ if __name__ == "__main__":
     parser.add_argument("--trees", action = "store", dest = "tree_param", type = str, default = None )
     parser.add_argument("--layers", action = "store", dest = "layer_size_param", type = str, nargs= '+', default = None )
     parser.add_argument("--save_path", action = "store", dest = "save_path", type = str, default= None)
+    parser.add_argument("--retrain_filter", action = "store_true", dest = "retrain_filter")
+    parser.add_argument("--balance_classes", action = "store_true", dest = "balance_classes")
     args, other = parser.parse_known_args()
     data_path = Path(args.data_path)
     data_test_path = Path(args.test_path) if args.test_path is not None else None
@@ -49,6 +51,8 @@ if __name__ == "__main__":
     pos_ratio_clc = args.pos_ratio_clc
     neg_ratio_clc = args.neg_ratio_clc
     save_path = args.save_path
+    retrain_filter = args.retrain_filter
+    tree_param = None
     params = [(args.tree_param,"n_estimators","RF"),(args.layer_size_param,"hidden_layers_size","FFNN")]
     if( pos_ratio > 1 or neg_ratio > 1 or pos_ratio <=0 or neg_ratio <=0 ):
         raise AssertionError("pos_ration and neg_ratio must be > 0 and <= 1 ")
@@ -68,21 +72,21 @@ if __name__ == "__main__":
     #addestramento classificatori
     classifier_scores_path, classifier_models_path, classifier_scores_path_test, changes = \
         classifier.integrate_train(dataset_train, dataset_test_filter, classifier_list,\
-        args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs, params)
+        args.force_train, args.nfoldsCV, pos_ratio_clc, neg_ratio_clc, id, rs, params, args.balance_classes)
     structure_dict = {}
     cl_time = serialize.load_time(id)
     #creazione e addestramento filtri
-
     for classifier_score_path, classifier_model_path, classifier_score_path_test, cl, cl_tot \
         in zip(classifier_scores_path, classifier_models_path, classifier_scores_path_test, classifier_list,list(map(lambda x: serialize.get_cl_name(x),classifier_models_path))):
         classifier_size = os.path.getsize(classifier_model_path)*8
         correct_size_filter = size_filter - classifier_size
+        print (classifier_model_path)
         if correct_size_filter < 0:
             print(f"size of classifier {cl} is greater than budget")
             continue
         ### Creazione filtro
         filter_path = Path(f"{classifier_model_path._str[:-4]}_{type_filter}_{size_filter}.pk1")
-        if( serialize.exist_model(filter_path) and changes == False ):
+        if( serialize.exist_model(filter_path) and changes == False and not retrain_filter):
             filter_opt = serialize.load_model(filter_path)
         else :
             filter_opt = dizionario[type_filter]()(classifier_score_path, correct_size_filter, other)
@@ -99,6 +103,7 @@ if __name__ == "__main__":
             structure_dict[cl_tot] = {"FPR" : fpr , "size_struct" : size_filter, "size_classifier" : classifier_size ,"time":filter_time, "medium query time: ": cl_time[cl] + filter_time}
     s_id = f"{id}_tnr={str(negTest_ratio)}_RF_{args.tree_param}_FFNN_{args.layer_size_param}_{size_filter}"
     if len(structure_dict) !=0 : 
+        print(structure_dict)
         results = DataFrame(structure_dict)
         serialize.save_results(results,type_filter, s_id,save_path)
         print(results)
