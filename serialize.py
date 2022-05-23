@@ -10,7 +10,6 @@ import gc
 MAX_LEN_NAME = 24
 MAX_LEN_CLASS = 3
 MAX_LEN_FPR = 5
-
 result_path = Path("results/")
 path_classifier = Path("models/")
 path_score = Path("score_classifier/")
@@ -40,20 +39,20 @@ def divide_dataset(dataset, dataset_test, pos_ratio, neg_ratio, negTest_ratio, r
         negTest_len = len(other_negative)
         del(negative, negative_samples_train_idx)
         gc.collect()
-
         # Creation of index for filters testing
         negative_samples_test_idx = rs.choice(range(negTest_len), replace = False, size = int(negTest_len * negTest_ratio))
         # Testing dataset splitting
         negative_samples_test = other_negative.iloc[negative_samples_test_idx, :]
         del(other_negative)
         gc.collect()
+
     else: # If dataset_test is not None, filters testing index will be extracted from dataset_test
         del(negative, negative_samples_train_idx)
         gc.collect()
-
         negative_test = dataset_test.loc[(dataset_test['label'] == neg_label)]
         del(dataset_test)
         gc.collect()
+
         negTest_len = len(negative_test)
 
         # Creation of index for filters testing
@@ -81,13 +80,12 @@ def load_dataset(path):
     if(json_dtypes_file.exists()):
         with json_dtypes_file.open() as f: 
             dtypes = json.load(f)
-            
             dtypes = {col_name : np.dtype(t) for col_name, t in dtypes.items()}
             print ("dttypes:", dtypes)
             data = pd.read_csv(path, dtype = dtypes)
     else: 
         data = pd.read_csv(path)
-    data = data.astype({"label": np.int8})    
+    data = data.astype({"label": np.int8})            
     return data
 
 def load_time(data_path):
@@ -117,11 +115,12 @@ def save_text_result(dict,filter_name,id, test_file):
     space_name = (MAX_LEN_NAME-(len(id)//4))*"\t"
     result_str = ""
     if not os.path.exists(test_file):
-        result_str = "data"+MAX_LEN_NAME*"\t"+"type\tmethod"+ MAX_LEN_CLASS*"\t"+"FPR\tSPACE\n"
+        result_str = "data"+MAX_LEN_NAME*"\t"+"type\tmethod"+ MAX_LEN_CLASS*"\t"+"FPR"+MAX_LEN_FPR*"\t"+"\tSPACE\n"
     type_dict = {"learned_Bloom_filter" : "LBF", "sandwiched_learned_Bloom_filter": "SLBF", "Ada-BF":"ADA-BF"}
     for key in dict:
         space_method = "\t"*(MAX_LEN_CLASS-len(key)//4)
-        result_str+=f"""{id }{space_name}\t{type_dict[filter_name]}\t{key}{space_method}\t{dict[key]["FPR"]}\t{dict[key]["size_struct"]}\t{dict[key]["time"]}\n"""
+        space_fpr = "\t" *(MAX_LEN_FPR - len(str(dict[key]['FPR']))//4)
+        result_str+=f"""{id }{space_name}\t{type_dict[filter_name]}\t{key}{space_method}\t{dict[key]["FPR"]}{space_fpr}\t{dict[key]["size_struct"]}\n"""
     with open(test_file,"a") as text_file:
         text_file.write(result_str)
 
@@ -129,7 +128,6 @@ def save_text_result(dict,filter_name,id, test_file):
 
 def load_model(path):
     path = get_model_path(path)
-#    with lzma.open(path,"rb") as model_file:
     with open(path,"rb") as model_file:
         model = pickle.load(model_file)
     return model
@@ -151,7 +149,6 @@ def save_classifier_analysis(dict, id, classifier, score = True):
 def save_model(model, save_path, not_serialize = False):
     '''salva i modelli'''
     save_path = get_model_path(save_path)
-#    with lzma.open(save_path,'wb') as file:
     with open(save_path,'wb') as file:
             pickle.dump(model,file)
     size = os.path.getsize(save_path) 
@@ -231,6 +228,7 @@ def find_neg_label(dataset):
     if len(dataset.loc[(dataset['label'] == neg_label)]) == 0:
         neg_label = 0
     return neg_label
+
 
 def get_cl_name(path):
     return path.parts[-1][:-4].split("_")[0]
