@@ -2,6 +2,7 @@ from pandas.core.frame import DataFrame
 import learned_Bloom_filter
 import sandwiched_Bloom_filter
 import Ada_BF
+import PLBF
 import argparse
 import classifier
 import serialize
@@ -15,7 +16,8 @@ path_score_test = serialize.path_score_test
 path_classifier = serialize.path_classifier
 dizionario = {"learned_Bloom_filter" : lambda : learned_Bloom_filter.main,
             "sandwiched_learned_Bloom_filter" : lambda : sandwiched_Bloom_filter.main,
-            "Ada-BF" : lambda : Ada_BF.main} 
+            "Ada-BF" : lambda : Ada_BF.main,
+            "PLBF" : lambda : PLBF.main} 
 
 
 if __name__ == "__main__":
