@@ -116,7 +116,7 @@ def save_text_result(dict,filter_name,id, test_file):
     result_str = ""
     if not os.path.exists(test_file):
         result_str = "data"+MAX_LEN_NAME*"\t"+"type\tmethod"+ MAX_LEN_CLASS*"\t"+"FPR"+MAX_LEN_FPR*"\t"+"\tSPACE\n"
-    type_dict = {"learned_Bloom_filter" : "LBF", "sandwiched_learned_Bloom_filter": "SLBF", "Ada-BF":"ADA-BF"}
+    type_dict = {"learned_Bloom_filter" : "LBF", "sandwiched_learned_Bloom_filter": "SLBF", "Ada-BF":"ADA-BF", "PLBF": "PLBF"}
     for key in dict:
         space_method = "\t"*(MAX_LEN_CLASS-len(key)//4)
         space_fpr = "\t" *(MAX_LEN_FPR - len(str(dict[key]['FPR']))//4)
