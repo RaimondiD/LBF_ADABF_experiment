@@ -1,4 +1,4 @@
-# A CRITICAL ANALYSIS OF CLASSIFIER SELECTION IN LEARNED BLOOM FILTERS
+# A CRITICAL ANALYSIS OF CLASSIFIER SELECTION IN LEARNED BLOOM FILTERS - SUPPORTING SOFTWARE.
 Dario Malchiodi, Davide Raimondi, Giacomo Fumagalli, Raffaele Giancarlo and Marco Frasca
 
 The repository includes python files which provide implementations of the Bloom filter (Bloom_filter.py), learned Bloom filter (learned_bloom_filter.py), sandwiched learned Bloom filter (sandwiched_learned_bloom_filter.py) and Ada Bloom filter (Ada-BF.py). Script to train both classifiers and filters, or classifiers alone are also provided. In particular, a list that summarizes the purpose of each of these script is provided below, more details about specific command line arguments are given later.
