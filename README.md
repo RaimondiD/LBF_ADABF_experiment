@@ -6,6 +6,7 @@ The repository includes python files which provide implementations of the Bloom 
 - `Bloom_filter.py`  initializes a Bloom filter on a given set of keys, tests the initialized structure on a set of negative queries and saves the obtained result.
 - `main.py` trains both classifiers (as in `classifier.py`) and learned filters on a given dataset and saves the obtained results.
 
+## Acknowledgements
 This realization of this repository has been supported by the Italian MUR PRIN project “Multicriteria data structures and algorithms: from compressed to learned indexes, and beyond” (Prot. 2017WR7SHH).
 
 ## Datasets
